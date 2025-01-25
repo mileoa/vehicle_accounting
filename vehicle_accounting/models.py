@@ -1,30 +1,8 @@
 from django.db import models
-
-
-# Create your models here.
-class Vehicle(models.Model):
-
-    price = models.DecimalField(
-        max_digits=10, decimal_places=2, verbose_name="цена"
-    )
-    year_of_manufacture = models.PositiveIntegerField(
-        verbose_name="год выпуска"
-    )
-    mileage = models.PositiveIntegerField(verbose_name="пробег")
-    description = models.TextField(blank=True, verbose_name="описание")
-    created_at = models.DateTimeField(
-        auto_now_add=True, verbose_name="дата внесения в базу"
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True, verbose_name="дата обновления в базе"
-    )
-    car_number = models.CharField(max_length=6, verbose_name="Номер машины")
-    brand = models.ForeignKey(
-        "Brand", on_delete=models.PROTECT, verbose_name="бренд"
-    )
-
-    def __str__(self):
-        return str(self.id)
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.core.exceptions import ValidationError
+from django.db.models import UniqueConstraint
 
 
 class Brand(models.Model):
@@ -49,3 +27,142 @@ class Brand(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Enterprise(models.Model):
+    name = models.CharField(max_length=250, verbose_name="название предприятия")
+    city = models.CharField(max_length=250, verbose_name="город")
+    phone = models.CharField(max_length=20, verbose_name="телефон")
+    email = models.EmailField(verbose_name="email")
+    website = models.URLField(blank=True, verbose_name="веб-сайт")
+
+    def __str__(self):
+        return self.name
+
+
+class Driver(models.Model):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__original_enterprise = getattr(self, "enterprise", None)
+
+    name = models.CharField(max_length=250, verbose_name="имя")
+    salary = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="зарплата"
+    )
+    experience_years = models.PositiveIntegerField(
+        verbose_name="стаж работы (лет)"
+    )
+    enterprise = models.ForeignKey(
+        Enterprise,
+        on_delete=models.PROTECT,
+        related_name="drivers",
+        verbose_name="предприятие",
+    )
+
+    def clean(self):
+        if not self.pk:
+            return None
+        if (
+            self.__original_enterprise != self.enterprise
+            and self.vehicles.exists()
+        ):
+            raise ValidationError(
+                "Водитель не может быть переназначен другому предприятию, если для него назначен автомобиль."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class Vehicle(models.Model):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__original_enterprise = getattr(self, "enterprise", None)
+
+    price = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="цена"
+    )
+    year_of_manufacture = models.PositiveIntegerField(
+        verbose_name="год выпуска"
+    )
+    mileage = models.PositiveIntegerField(verbose_name="пробег")
+    description = models.TextField(blank=True, verbose_name="описание")
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name="дата внесения в базу"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name="дата обновления в базе"
+    )
+    car_number = models.CharField(
+        max_length=6, verbose_name="номер машины", unique=True
+    )
+    brand = models.ForeignKey(
+        "Brand", on_delete=models.PROTECT, verbose_name="бренд"
+    )
+
+    enterprise = models.ForeignKey(
+        Enterprise,
+        on_delete=models.PROTECT,
+        related_name="vehicles",
+        verbose_name="предприятие",
+    )
+
+    drivers = models.ManyToManyField(
+        "Driver",
+        through="VehicleDriver",
+        related_name="vehicles",
+        verbose_name="водители",
+    )
+
+    def clean(self):
+        if not self.pk:
+            return None
+        if (
+            self.__original_enterprise != self.enterprise
+            and self.drivers.exists()
+        ):
+            raise ValidationError(
+                "Автомобиль не может быть переназначен другому предприятию, если для него назначен водитель."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return str(self.car_number)
+
+
+class VehicleDriver(models.Model):
+    vehicle = models.ForeignKey(
+        Vehicle, on_delete=models.CASCADE, related_name="vehicle_drivers"
+    )
+    driver = models.ForeignKey(
+        Driver, on_delete=models.CASCADE, related_name="driver_vehicles"
+    )
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["vehicle", "driver"], name="unique_vehicle_driver"
+            )
+        ]
+
+    def clean(self):
+        if self.vehicle.enterprise != self.driver.enterprise:
+            raise ValidationError(
+                "Транспортное средство и водитель должны принадлежать одному и тому же предприятию."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.vehicle.car_number} - {self.driver.name}"
