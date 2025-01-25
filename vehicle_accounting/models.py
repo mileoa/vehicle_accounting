@@ -146,18 +146,44 @@ class VehicleDriver(models.Model):
     driver = models.ForeignKey(
         Driver, on_delete=models.CASCADE, related_name="driver_vehicles"
     )
+    is_active = models.BooleanField(
+        default=False, verbose_name="Активный водитель"
+    )
 
     class Meta:
         constraints = [
             UniqueConstraint(
                 fields=["vehicle", "driver"], name="unique_vehicle_driver"
-            )
+            ),
+            UniqueConstraint(
+                fields=["driver", "is_active"],
+                condition=models.Q(is_active=True),
+                name="unique_active_driver",
+                violation_error_message="Данный водитель уже назначен активным для одного из автомобилей.",
+            ),
+            UniqueConstraint(
+                fields=["vehicle", "is_active"],
+                condition=models.Q(is_active=True),
+                name="unique_active_vehicle",
+                violation_error_message="Для данного автомобиля уже назначен активный водитель.",
+            ),
         ]
 
     def clean(self):
+        if not self.is_active:
+            return None
+
         if self.vehicle.enterprise != self.driver.enterprise:
             raise ValidationError(
                 "Транспортное средство и водитель должны принадлежать одному и тому же предприятию."
+            )
+        if self.vehicle.vehicle_drivers.filter(is_active=True).count() > 1:
+            raise ValidationError(
+                "Для данного транспортного средства уже назначен активный водитель."
+            )
+        if self.driver.driver_vehicles.filter(is_active=True).count() > 1:
+            raise ValidationError(
+                "Данный водитель уже является активным для другого транспортного средства."
             )
 
     def save(self, *args, **kwargs):

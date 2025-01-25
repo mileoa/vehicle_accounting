@@ -3,8 +3,13 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
 from rest_framework import status
 from rest_framework import viewsets
-from .models import Vehicle, Brand
-from .serializers import VehicleSerializer, BrandSerializer
+from .models import Vehicle, Brand, Driver, Enterprise
+from .serializers import (
+    VehicleSerializer,
+    BrandSerializer,
+    DriverSerializer,
+    EnterpriseSerializer,
+)
 
 
 # Create your views here.
@@ -18,3 +23,15 @@ class BrandViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer]
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
+
+
+class DriverViewSet(viewsets.ModelViewSet):
+    renderer_classes = [JSONRenderer]
+    queryset = Driver.objects.all()
+    serializer_class = DriverSerializer
+
+
+class EnterpriseViewSet(viewsets.ModelViewSet):
+    renderer_classes = [JSONRenderer]
+    queryset = Enterprise.objects.all()
+    serializer_class = EnterpriseSerializer

@@ -19,11 +19,18 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import VehicleViewSet, BrandViewSet
+from .views import (
+    VehicleViewSet,
+    BrandViewSet,
+    DriverViewSet,
+    EnterpriseViewSet,
+)
 
 router = DefaultRouter()
 router.register(r"vehicles", VehicleViewSet)
 router.register(r"brands", BrandViewSet)
+router.register(r"drivers", DriverViewSet)
+router.register(r"enterprises", EnterpriseViewSet)
 
 
 urlpatterns = [
