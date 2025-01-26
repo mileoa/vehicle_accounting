@@ -3,12 +3,13 @@ from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
 from rest_framework import status
 from rest_framework import viewsets
-from .models import Vehicle, Brand, Driver, Enterprise
+from .models import Vehicle, Brand, Driver, Enterprise, VehicleDriver
 from .serializers import (
     VehicleSerializer,
     BrandSerializer,
     DriverSerializer,
     EnterpriseSerializer,
+    ActiveVehicleDriverSerializer,
 )
 
 
@@ -35,3 +36,9 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer]
     queryset = Enterprise.objects.all()
     serializer_class = EnterpriseSerializer
+
+
+class ActiveVehicleDriverViewSet(viewsets.ModelViewSet):
+    renderer_classes = [JSONRenderer]
+    queryset = VehicleDriver.objects.filter(is_active=True)
+    serializer_class = ActiveVehicleDriverSerializer

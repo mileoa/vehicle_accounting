@@ -24,6 +24,7 @@ from .views import (
     BrandViewSet,
     DriverViewSet,
     EnterpriseViewSet,
+    ActiveVehicleDriverViewSet,
 )
 
 router = DefaultRouter()
@@ -31,6 +32,11 @@ router.register(r"vehicles", VehicleViewSet, basename="vehicles")
 router.register(r"brands", BrandViewSet, basename="brands")
 router.register(r"drivers", DriverViewSet, basename="drivers")
 router.register(r"enterprises", EnterpriseViewSet, basename="enterprises")
+router.register(
+    r"active_drivers",
+    ActiveVehicleDriverViewSet,
+    basename="active_drivers",
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
