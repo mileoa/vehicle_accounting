@@ -170,13 +170,12 @@ class VehicleDriver(models.Model):
         ]
 
     def clean(self):
-        if not self.is_active:
-            return None
-
         if self.vehicle.enterprise != self.driver.enterprise:
             raise ValidationError(
                 "Транспортное средство и водитель должны принадлежать одному и тому же предприятию."
             )
+        if not self.is_active:
+            return None
         if self.vehicle.vehicle_drivers.filter(is_active=True).count() > 1:
             raise ValidationError(
                 "Для данного транспортного средства уже назначен активный водитель."

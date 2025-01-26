@@ -27,11 +27,10 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r"vehicles", VehicleViewSet)
-router.register(r"brands", BrandViewSet)
-router.register(r"drivers", DriverViewSet)
-router.register(r"enterprises", EnterpriseViewSet)
-
+router.register(r"vehicles", VehicleViewSet, basename="vehicles")
+router.register(r"brands", BrandViewSet, basename="brands")
+router.register(r"drivers", DriverViewSet, basename="drivers")
+router.register(r"enterprises", EnterpriseViewSet, basename="enterprises")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
