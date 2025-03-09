@@ -16,6 +16,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+AUTH_USER_MODEL = "vehicle_accounting.CustomUser"
+LOGIN_REDIRECT_URL = "/vehicles"
+LOGOUT_REDIRECT_URL = "/"
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,7 +47,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_bootstrap5",
     "rest_framework",
+    "rest_framework_simplejwt",
     "vehicle_accounting",
 ]
 
@@ -136,6 +142,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
-    ]
+        "rest_framework.permissions.DjangoModelPermissions",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "EXCEPTION_HANDLER": "vehicle_accounting.exceptions.custom_exception_handler",
 }

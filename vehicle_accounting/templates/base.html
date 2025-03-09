@@ -1,0 +1,26 @@
+
+<!DOCTYPE html>
+<html lang="ru-ru">
+  <head>
+    <title>{% block title %}{% endblock %}</title>
+    {% load django_bootstrap5 %}
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+  </head>
+  <body class="d-flex flex-column min-vh-100">  
+    <nav class="navbar navbar-expand-lg navbar-light bg-light ms-3">
+        {% block navigation %} {% include "navigation.html" %} {% endblock %}
+    </nav>
+    <div class="container wrapper flex-grow-1">
+      {% if messages %}
+        {% bootstrap_messages %}
+      {% endif %}
+        <h1 class="my-4"></h1>
+        <h1 class="my-4"></h1>
+        {% block content %}{% endblock %}
+    </div>
+    <footer>
+        {% block footer %} {% include "footer.html" %} {% endblock %}
+    </footer>
+  </body>
+</html>

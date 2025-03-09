@@ -1,0 +1,33 @@
+{% extends "base.html"%}
+{% load django_bootstrap5 %}
+{% block title %}Автомобили{% endblock %}
+{% block content %}
+<h1 class="my-4">Автомобили</h1>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+          <th>Цена</th>
+          <th>Год производства</th>
+          <th>Пробег</th>
+          <th>Описание</th>
+          <th>Номер машины</th>
+          <th>Бренд</th>
+          <th>Предприятие</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for vehicle in vehicles %}
+        <tr>
+            <td>{{ vehicle.price }}</td>
+            <td>{{ vehicle.year_of_manufacture }}</td>
+            <td>{{ vehicle.mileage }}</td>
+            <td>{{ vehicle.description }} </td>
+            <td>{{ vehicle.car_number }}</td>
+            <td>{{ vehicle.brand }}</td>
+            <td>{{vehicle.enterprise}}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

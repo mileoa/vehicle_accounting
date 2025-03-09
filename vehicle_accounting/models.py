@@ -3,6 +3,24 @@ from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.db.models import UniqueConstraint
+from django.contrib.auth.models import AbstractUser
+
+
+class CustomUser(AbstractUser):
+    groups = models.ManyToManyField(
+        "auth.Group",
+        related_name="custom_user_set",
+        blank=True,
+        help_text="The groups this user belongs to. A user will get all permissions granted to each of their groups.",
+        verbose_name="groups",
+    )
+    user_permissions = models.ManyToManyField(
+        "auth.Permission",
+        related_name="custom_user_set",
+        blank=True,
+        help_text="Specific permissions for this user.",
+        verbose_name="user permissions",
+    )
 
 
 class Brand(models.Model):
@@ -10,6 +28,7 @@ class Brand(models.Model):
     vehicle_type = models.CharField(
         max_length=50,
         choices=[
+            ("noname", "noname"),
             ("sedan", "Легковой"),
             ("truck", "Грузовой"),
             ("bus", "Автобус"),
@@ -25,6 +44,11 @@ class Brand(models.Model):
     )
     seats_number = models.PositiveIntegerField(help_text="Количество мест")
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["id"]),
+        ]
+
     def __str__(self):
         return self.name
 
@@ -36,8 +60,39 @@ class Enterprise(models.Model):
     email = models.EmailField(verbose_name="email")
     website = models.URLField(blank=True, verbose_name="веб-сайт")
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["id"]),
+        ]
+
     def __str__(self):
         return self.name
+
+
+class Manager(models.Model):
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="manager",
+        verbose_name="пользователь",
+    )
+    enterprises = models.ManyToManyField(
+        Enterprise, related_name="managers", verbose_name="предприятия"
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["id"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.user.is_staff = True
+            self.user.save()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.user.username
 
 
 class Driver(models.Model):
@@ -59,6 +114,11 @@ class Driver(models.Model):
         related_name="drivers",
         verbose_name="предприятие",
     )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["id"]),
+        ]
 
     def clean(self):
         if not self.pk:
@@ -120,6 +180,11 @@ class Vehicle(models.Model):
         verbose_name="водители",
     )
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["id"]),
+        ]
+
     def clean(self):
         if not self.pk:
             return None
@@ -165,7 +230,7 @@ class VehicleDriver(models.Model):
                 fields=["vehicle", "is_active"],
                 condition=models.Q(is_active=True),
                 name="unique_active_vehicle",
-                violation_error_message="Для данного автомобиля уже назначен активный водитель.",
+                violation_error_message="Не может быть назначено больше одного водителя.",
             ),
         ]
 
@@ -178,7 +243,7 @@ class VehicleDriver(models.Model):
             return None
         if self.vehicle.vehicle_drivers.filter(is_active=True).count() > 1:
             raise ValidationError(
-                "Для данного транспортного средства уже назначен активный водитель."
+                "Не может быть назначено больше одного водителя."
             )
         if self.driver.driver_vehicles.filter(is_active=True).count() > 1:
             raise ValidationError(
