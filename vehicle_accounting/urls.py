@@ -35,6 +35,7 @@ from .views import (
     DeleteVehicleView,
     IndexEnterpisesView,
     IndexEnterpiseVehiclesView,
+    VehicleGPSPointViewSet,
 )
 
 handler403 = "vehicle_accounting.views.custom_handler403"
@@ -49,6 +50,9 @@ router.register(
     r"active_drivers",
     ActiveVehicleDriverViewSet,
     basename="active_drivers",
+)
+router.register(
+    r"vehicle_gps_points", VehicleGPSPointViewSet, basename="vehicle_gps_points"
 )
 
 urlpatterns = [
@@ -72,6 +76,11 @@ urlpatterns = [
         "enterprises/",
         IndexEnterpisesView.as_view(),
         name="enterprises_list",
+    ),
+    path(
+        "enterprises/<int:pk>/vehicles/",
+        IndexEnterpiseVehiclesView.as_view(),
+        name="enterprise_vehicles_list",
     ),
     path(
         "enterprises/<int:pk>/vehicles/",

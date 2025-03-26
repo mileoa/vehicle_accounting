@@ -12,4 +12,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "faker>=36.1.1",
     "django-bootstrap5>=24.3",
+    "pytz>=2025.1",
+    "djangorestframework-gis>=1.1",
+    "requests>=2.32.3",
 ]

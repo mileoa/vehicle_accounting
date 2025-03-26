@@ -1,5 +1,6 @@
 {% extends "base.html"%}
 {% load django_bootstrap5 %}
+{% load static %}
 {% block title %}Автомобили{% endblock %}
 {% block content %}
 <h1 class="my-4">Автомобили</h1>
@@ -14,6 +15,7 @@
           <th>Номер машины</th>
           <th>Бренд</th>
           <th>Предприятие</th>
+          <th>Время покупки</th>
         </tr>
     </thead>
     <tbody>
@@ -26,8 +28,16 @@
             <td>{{ vehicle.car_number }}</td>
             <td>{{ vehicle.brand }}</td>
             <td>{{vehicle.enterprise}}</td>
+            <td>
+                {% if vehicle.purchase_datetime %}
+                <span class="datetime-field" data-datetime-obj="{{ vehicle.purchase_datetime|date:'c' }}"></span>
+                {% else %}
+                -
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+<script src="{% static 'js/formatDatetime.js' %}"></script>
 {% endblock %}

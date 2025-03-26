@@ -1,5 +1,8 @@
 from django.shortcuts import get_object_or_404, render, HttpResponseRedirect
+from django.core.serializers import serialize
+from datetime import datetime
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.http import HttpResponse, Http404
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.mixins import (
@@ -14,15 +17,31 @@ from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import viewsets
+from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.renderers import JSONRenderer
-from .models import Vehicle, Brand, Driver, Enterprise, VehicleDriver, Manager
+from rest_framework import serializers as rest_serializers
+from .settings import DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE
+from .models import (
+    Vehicle,
+    Brand,
+    Driver,
+    Enterprise,
+    VehicleDriver,
+    Manager,
+    VehicleGPSPoint,
+    VehicleGPSPointArchive,
+)
 from .serializers import (
     VehicleSerializer,
     BrandSerializer,
     DriverSerializer,
     EnterpriseSerializer,
     ActiveVehicleDriverSerializer,
+    VehicleGPSPointSerializer,
+    VehicleGPSPointArchiveSerializer,
+    GeoJSONVehicleGPSPointSerializer,
+    GeoJSONGPSPointArchiveSerializer,
 )
 from .permissions import HasRoleOrSuper
 from .forms import CustomLoginForm, VehicleForm
@@ -359,3 +378,87 @@ class ActiveVehicleDriverViewSet(viewsets.ModelViewSet):
                 detail="You do not have permission to access this object."
             )
         return obj
+
+
+class VehicleGPSPointViewSet(viewsets.ViewSet):
+
+    permission_classes = [
+        IsAuthenticated,
+        HasRoleOrSuper("manager"),
+    ]
+
+    def list(self, request):
+        vehicle_id = request.query_params.get("vehicle_id", None)
+        start_date = request.query_params.get("start_date", None)
+        end_date = request.query_params.get("end_date", None)
+        output_format = request.query_params.get("output_format", "json")
+
+        if vehicle_id is None:
+            raise rest_serializers.ValidationError(
+                "'vehicle_id' parameter is required"
+            )
+        if start_date is None:
+            raise rest_serializers.ValidationError(
+                "'start_date' parameter is required"
+            )
+        if end_date is None:
+            raise rest_serializers.ValidationError(
+                "'end_date' parameter is required"
+            )
+        if start_date > end_date:
+            raise rest_serializers.ValidationError(
+                "'start_date' cant be greater than 'end_date'"
+            )
+
+        if not request.user.is_superuser:
+            manager = Manager.objects.get(user=self.request.user)
+            is_belong_to_manager = Vehicle.objects.filter(
+                id=vehicle_id, enterprise__in=manager.enterprises.all()
+            ).exists()
+            if not is_belong_to_manager:
+                raise PermissionDenied(
+                    detail="You do not have permission to access this object."
+                )
+
+        current_points = VehicleGPSPoint.objects.filter(
+            vehicle_id=vehicle_id,
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
+        )
+        if output_format == "geojson":
+            data = GeoJSONVehicleGPSPointSerializer(
+                current_points, many=True
+            ).data
+        else:
+            data = VehicleGPSPointSerializer(current_points, many=True).data
+
+        start_date_aware = timezone.make_aware(
+            datetime.fromisoformat(start_date)
+        )
+        is_include_archive_date = start_date_aware < (
+            timezone.now()
+            - timezone.timedelta(days=DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE)
+        )
+        if is_include_archive_date and output_format == "geojson":
+            archived_points = VehicleGPSPointArchive.objects.filter(
+                vehicle_id=vehicle_id,
+                created_at__date__gte=start_date,
+                created_at__date__lte=end_date,
+            )
+            data["features"].extend(
+                GeoJSONGPSPointArchiveSerializer(
+                    archived_points, many=True
+                ).data["features"]
+            )
+        elif is_include_archive_date:
+            archived_points = VehicleGPSPointArchive.objects.filter(
+                vehicle_id=vehicle_id,
+                created_at__date__gte=start_date,
+                created_at__date__lte=end_date,
+            )
+            archive_vehicle_gps_point_serializer = (
+                VehicleGPSPointArchiveSerializer(archived_points, many=True)
+            )
+            data += archive_vehicle_gps_point_serializer.data
+
+        return Response(data)

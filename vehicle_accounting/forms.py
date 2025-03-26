@@ -2,6 +2,7 @@ from django import forms
 from django.forms import ModelForm
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
+from django.contrib.admin.widgets import AdminSplitDateTime
 from .models import CustomUser, Vehicle, VehicleDriver
 
 
@@ -22,6 +23,11 @@ class CustomLoginForm(AuthenticationForm):
 
 class VehicleForm(ModelForm):
 
+    purchase_datetime = forms.DateTimeField(
+        widget=forms.DateTimeInput(),
+        label="Время покупки",
+    )
+
     class Meta:
         model = Vehicle
         fields = [
@@ -32,4 +38,5 @@ class VehicleForm(ModelForm):
             "description",
             "brand",
             "enterprise",
+            "purchase_datetime",
         ]

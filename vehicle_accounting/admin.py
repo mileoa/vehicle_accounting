@@ -7,9 +7,14 @@ from .models import (
     Enterprise,
     Driver,
     VehicleDriver,
+    VehicleGPSPoint,
+    VehicleGPSPointArchive,
 )
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Permission
+from zoneinfo import available_timezones
+from django.db import models
+from django import forms
 
 
 class ManagerAdmin(admin.ModelAdmin):
@@ -89,6 +94,7 @@ class VehicleAdmin(admin.ModelAdmin):
         "updated_at",
         "description",
         "enterprise",
+        "purchase_datetime",
     ]
 
     def get_queryset(self, request):
@@ -101,7 +107,6 @@ class VehicleAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         if not request.user.is_superuser:
-            test = form.base_fields
             manager = Manager.objects.get(user=request.user)
             form.base_fields["enterprise"].queryset = manager.enterprises.all()
         return form
@@ -126,6 +131,7 @@ class EnterpriseAdmin(admin.ModelAdmin):
         "phone",
         "email",
         "website",
+        "timezone",
     ]
 
     def get_queryset(self, request):
@@ -153,9 +159,33 @@ class DriverAdmin(admin.ModelAdmin):
         return qs.filter(enterprise__in=manager.enterprises.all())
 
 
+class VehicleGPSPointAdmin(admin.ModelAdmin):
+    list_display = ["vehicle", "point", "created_at"]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        manager = Manager.objects.get(user=request.user)
+        return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
+
+
+class VehicleGPSPointArchiveAdmin(admin.ModelAdmin):
+    list_display = ["vehicle", "point", "created_at"]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        manager = Manager.objects.get(user=request.user)
+        return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
+
+
 admin.site.register(Vehicle, VehicleAdmin)
 admin.site.register(Brand, BrandAdmin)
 admin.site.register(Enterprise, EnterpriseAdmin)
 admin.site.register(Driver, DriverAdmin)
 admin.site.register(CustomUser, UserAdmin)
 admin.site.register(Manager, ManagerAdmin)
+admin.site.register(VehicleGPSPoint, VehicleGPSPointAdmin)
+admin.site.register(VehicleGPSPointArchive, VehicleGPSPointArchiveAdmin)

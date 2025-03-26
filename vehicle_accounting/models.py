@@ -1,9 +1,12 @@
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+from zoneinfo import available_timezones
 from django.core.exceptions import ValidationError
+from django.contrib.gis.db import models as gis_models
 from django.db.models import UniqueConstraint
 from django.contrib.auth.models import AbstractUser
+from . import settings
 
 
 class CustomUser(AbstractUser):
@@ -59,6 +62,11 @@ class Enterprise(models.Model):
     phone = models.CharField(max_length=20, verbose_name="телефон")
     email = models.EmailField(verbose_name="email")
     website = models.URLField(blank=True, verbose_name="веб-сайт")
+    timezone = models.CharField(
+        max_length=50,
+        choices=[(tz, tz) for tz in available_timezones()],
+        default=settings.TIME_ZONE,
+    )
 
     class Meta:
         indexes = [
@@ -179,6 +187,9 @@ class Vehicle(models.Model):
         related_name="vehicles",
         verbose_name="водители",
     )
+    purchase_datetime = models.DateTimeField(
+        verbose_name="Время покупки", null=True, blank=True
+    )
 
     class Meta:
         indexes = [
@@ -256,3 +267,31 @@ class VehicleDriver(models.Model):
 
     def __str__(self):
         return f"{self.vehicle.car_number} - {self.driver.name}"
+
+
+class VehicleGPSPoint(models.Model):
+    vehicle = models.ForeignKey(
+        Vehicle, on_delete=models.CASCADE, related_name="gps_points"
+    )
+    point = gis_models.PointField(verbose_name="Местоположение")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Время")
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["vehicle", "created_at"]),
+            models.Index(fields=["point"]),
+        ]
+
+
+class VehicleGPSPointArchive(models.Model):
+    vehicle = models.ForeignKey(
+        Vehicle, on_delete=models.CASCADE, related_name="archive_gps_points"
+    )
+    point = gis_models.PointField(verbose_name="Местоположение")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Время")
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["vehicle", "created_at"]),
+            models.Index(fields=["point"]),
+        ]

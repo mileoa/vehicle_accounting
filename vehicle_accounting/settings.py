@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.gis",
+    "rest_framework_gis",
     "django_bootstrap5",
     "rest_framework",
     "rest_framework_simplejwt",
@@ -89,7 +91,7 @@ WSGI_APPLICATION = "vehicle_accounting.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "ENGINE": "django.contrib.gis.db.backends.postgis",
         "NAME": os.getenv("PGDB_NAME"),
         "USER": os.getenv("PGDB_USER"),
         "PASSWORD": os.getenv("PGDB_PASSWORD"),
@@ -149,3 +151,7 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "vehicle_accounting.exceptions.custom_exception_handler",
 }
+
+
+# Days to move vehicle GPS points to archive
+DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE = 30
