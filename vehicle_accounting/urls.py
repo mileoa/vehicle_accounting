@@ -36,6 +36,7 @@ from .views import (
     IndexEnterpisesView,
     IndexEnterpiseVehiclesView,
     VehicleGPSPointViewSet,
+    TripGPSPointViewSet,
 )
 
 handler403 = "vehicle_accounting.views.custom_handler403"
@@ -54,6 +55,7 @@ router.register(
 router.register(
     r"vehicle_gps_points", VehicleGPSPointViewSet, basename="vehicle_gps_points"
 )
+router.register(r"trips", TripGPSPointViewSet, basename="trips")
 
 urlpatterns = [
     path("admin/", admin.site.urls),

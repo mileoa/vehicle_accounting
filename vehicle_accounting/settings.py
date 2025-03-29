@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.gis",
+    "django_extensions",
     "rest_framework_gis",
     "django_bootstrap5",
     "rest_framework",

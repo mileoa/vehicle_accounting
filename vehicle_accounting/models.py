@@ -295,3 +295,38 @@ class VehicleGPSPointArchive(models.Model):
             models.Index(fields=["vehicle", "created_at"]),
             models.Index(fields=["point"]),
         ]
+
+
+class Trip(models.Model):
+
+    vehicle = models.ForeignKey(
+        Vehicle,
+        on_delete=models.CASCADE,
+        related_name="trips",
+        verbose_name="Автомобиль",
+    )
+    start_time = models.DateTimeField(verbose_name="Время начала поездки")
+    end_time = models.DateTimeField(verbose_name="Время окончания поездки")
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["vehicle", "start_time", "end_time"]),
+        ]
+        ordering = ["-start_time"]
+
+    def __str__(self):
+        return f"Поездка {self.vehicle.car_number}: {self.start_time} - {self.end_time}"
+
+    def clean(self):
+        if (
+            self.start_time
+            and self.end_time
+            and self.start_time > self.end_time
+        ):
+            raise ValidationError(
+                "Время начала поездки не может быть позже времени окончания."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
+from django.db.models import QuerySet
 import pytz
 from .models import (
     Vehicle,
@@ -9,6 +10,7 @@ from .models import (
     VehicleDriver,
     VehicleGPSPoint,
     VehicleGPSPointArchive,
+    Trip,
 )
 
 
@@ -82,12 +84,17 @@ class VehicleGPSPointSerializer(serializers.ModelSerializer):
         model = VehicleGPSPoint
         fields = ["vehicle", "point", "created_at"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.timezone_cache = None
+
     def get_created_at(self, obj):
         created_at = obj.created_at
-        if created_at is not None:
-            created_at = created_at.astimezone(
-                pytz.timezone(obj.vehicle.enterprise.timezone)
-            )
+        if created_at is None:
+            return created_at
+        if self.timezone_cache is None:
+            self.timezone_cache = pytz.timezone(obj.vehicle.enterprise.timezone)
+        created_at = created_at.astimezone(self.timezone_cache)
         return created_at
 
 
@@ -98,12 +105,17 @@ class VehicleGPSPointArchiveSerializer(serializers.ModelSerializer):
         model = VehicleGPSPointArchive
         fields = ["vehicle", "point", "created_at"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.timezone_cache = None
+
     def get_created_at(self, obj):
+        if self.timezone_cache is None:
+            self.timezone_cache = pytz.timezone(obj.vehicle.enterprise.timezone)
         created_at = obj.created_at
-        if created_at is not None:
-            created_at = created_at.astimezone(
-                pytz.timezone(obj.vehicle.enterprise.timezone)
-            )
+        if created_at is None:
+            return created_at
+        created_at = created_at.astimezone(self.timezone_cache)
         return created_at
 
 
@@ -115,12 +127,17 @@ class GeoJSONVehicleGPSPointSerializer(GeoFeatureModelSerializer):
         geo_field = "point"
         fields = ["vehicle", "created_at"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.timezone_cache = None
+
     def get_created_at(self, obj):
+        if self.timezone_cache is None:
+            self.timezone_cache = pytz.timezone(obj.vehicle.enterprise.timezone)
         created_at = obj.created_at
-        if created_at is not None:
-            created_at = created_at.astimezone(
-                pytz.timezone(obj.vehicle.enterprise.timezone)
-            )
+        if created_at is None:
+            return created_at
+        created_at = created_at.astimezone(self.timezone_cache)
         return created_at
 
 
@@ -132,10 +149,40 @@ class GeoJSONGPSPointArchiveSerializer(GeoFeatureModelSerializer):
         geo_field = "point"
         fields = ["vehicle", "created_at"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.timezone_cache = None
+
     def get_created_at(self, obj):
+        if self.timezone_cache is None:
+            self.timezone_cache = pytz.timezone(obj.vehicle.enterprise.timezone)
         created_at = obj.created_at
-        if created_at is not None:
-            created_at = created_at.astimezone(
+        if created_at is None:
+            return created_at
+        created_at = created_at.astimezone(self.timezone_cache)
+        return created_at
+
+
+class TripSerializer(serializers.ModelSerializer):
+    start_time = serializers.SerializerMethodField()
+    end_time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Trip
+        fields = ["id", "vehicle", "start_time", "end_time"]
+
+    def get_start_time(self, obj):
+        start_time = obj.start_time
+        if start_time is not None:
+            start_time = start_time.astimezone(
                 pytz.timezone(obj.vehicle.enterprise.timezone)
             )
-        return created_at
+        return start_time
+
+    def get_end_time(self, obj):
+        end_time = obj.end_time
+        if end_time is not None:
+            end_time = end_time.astimezone(
+                pytz.timezone(obj.vehicle.enterprise.timezone)
+            )
+        return end_time

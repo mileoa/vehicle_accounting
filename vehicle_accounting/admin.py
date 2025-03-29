@@ -9,12 +9,14 @@ from .models import (
     VehicleDriver,
     VehicleGPSPoint,
     VehicleGPSPointArchive,
+    Trip,
 )
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Permission
 from zoneinfo import available_timezones
 from django.db import models
 from django import forms
+from django.contrib.admin import widgets
 
 
 class ManagerAdmin(admin.ModelAdmin):
@@ -96,6 +98,7 @@ class VehicleAdmin(admin.ModelAdmin):
         "enterprise",
         "purchase_datetime",
     ]
+    search_fields = ["car_number"]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -160,7 +163,8 @@ class DriverAdmin(admin.ModelAdmin):
 
 
 class VehicleGPSPointAdmin(admin.ModelAdmin):
-    list_display = ["vehicle", "point", "created_at"]
+    list_display = ["vehicle", "point", "formated_created_at"]
+    ordering = ["-created_at"]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -168,10 +172,17 @@ class VehicleGPSPointAdmin(admin.ModelAdmin):
             return qs
         manager = Manager.objects.get(user=request.user)
         return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
+
+    def formated_created_at(self, obj):
+        if obj.created_at:
+            return obj.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        return None
+
+    formated_created_at.short_description = "Время"
 
 
 class VehicleGPSPointArchiveAdmin(admin.ModelAdmin):
-    list_display = ["vehicle", "point", "created_at"]
+    list_display = ["vehicle", "point", "formated_created_at"]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -179,6 +190,64 @@ class VehicleGPSPointArchiveAdmin(admin.ModelAdmin):
             return qs
         manager = Manager.objects.get(user=request.user)
         return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
+
+    def formated_created_at(self, obj):
+        if obj.created_at:
+            return obj.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        return None
+
+    formated_created_at.short_description = "Время"
+
+
+class TripAdminForm(forms.ModelForm):
+    class Meta:
+        model = Trip
+        fields = "__all__"
+        widgets = {
+            "start_time": widgets.AdminSplitDateTime(),
+            "end_time": widgets.AdminSplitDateTime(),
+        }
+
+
+class TripAdmin(admin.ModelAdmin):
+    model = Trip
+    list_display = [
+        "id",
+        "vehicle",
+        "formatted_start_time",
+        "formatted_end_time",
+    ]
+    list_filter = ["vehicle__enterprise", "vehicle"]
+    search_fields = ["vehicle__car_number"]
+
+    def formatted_start_time(self, obj):
+        if obj.start_time:
+            return obj.start_time.strftime("%Y-%m-%d %H:%M:%S")
+        return None
+
+    def formatted_end_time(self, obj):
+        if obj.end_time:
+            return obj.end_time.strftime("%Y-%m-%d %H:%M:%S")
+        return None
+
+    formatted_start_time.short_description = "Время начала поездки"
+    formatted_end_time.short_description = "Время окончания поездки"
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        manager = Manager.objects.get(user=request.user)
+        return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if not request.user.is_superuser:
+            manager = Manager.objects.get(user=request.user)
+            form.base_fields["vehicle"].queryset = Vehicle.objects.filter(
+                enterprise__in=manager.enterprises.all()
+            )
+        return form
 
 
 admin.site.register(Vehicle, VehicleAdmin)
@@ -189,3 +258,4 @@ admin.site.register(CustomUser, UserAdmin)
 admin.site.register(Manager, ManagerAdmin)
 admin.site.register(VehicleGPSPoint, VehicleGPSPointAdmin)
 admin.site.register(VehicleGPSPointArchive, VehicleGPSPointArchiveAdmin)
+admin.site.register(Trip, TripAdmin)
