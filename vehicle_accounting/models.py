@@ -282,6 +282,9 @@ class VehicleGPSPoint(models.Model):
             models.Index(fields=["point"]),
         ]
 
+    def __str__(self):
+        return f"({self.point.x}, {self.point.y})"
+
 
 class VehicleGPSPointArchive(models.Model):
     vehicle = models.ForeignKey(
@@ -307,6 +310,22 @@ class Trip(models.Model):
     )
     start_time = models.DateTimeField(verbose_name="Время начала поездки")
     end_time = models.DateTimeField(verbose_name="Время окончания поездки")
+    start_point = models.ForeignKey(
+        VehicleGPSPoint,
+        related_name="trip_starts",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="Начальная точка",
+    )
+    end_point = models.ForeignKey(
+        VehicleGPSPoint,
+        related_name="trip_ends",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="Конечная точка",
+    )
 
     class Meta:
         indexes = [

@@ -12,6 +12,7 @@ from .models import (
     VehicleGPSPointArchive,
     Trip,
 )
+from .services import get_address_from_coordinates
 
 
 class VehicleSerializer(serializers.ModelSerializer):
@@ -164,25 +165,55 @@ class GeoJSONGPSPointArchiveSerializer(GeoFeatureModelSerializer):
 
 
 class TripSerializer(serializers.ModelSerializer):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.timezone_cache = None
+
+    start_point = serializers.SerializerMethodField()
+    end_point = serializers.SerializerMethodField()
     start_time = serializers.SerializerMethodField()
     end_time = serializers.SerializerMethodField()
 
     class Meta:
         model = Trip
-        fields = ["id", "vehicle", "start_time", "end_time"]
+        fields = [
+            "id",
+            "vehicle",
+            "start_time",
+            "end_time",
+            "start_point",
+            "end_point",
+        ]
 
     def get_start_time(self, obj):
         start_time = obj.start_time
-        if start_time is not None:
-            start_time = start_time.astimezone(
-                pytz.timezone(obj.vehicle.enterprise.timezone)
-            )
+        if start_time is None:
+            return start_time
+        if self.timezone_cache is None:
+            self.timezone_cache = pytz.timezone(obj.vehicle.enterprise.timezone)
+        start_time = start_time.astimezone(self.timezone_cache)
         return start_time
 
     def get_end_time(self, obj):
-        end_time = obj.end_time
-        if end_time is not None:
-            end_time = end_time.astimezone(
-                pytz.timezone(obj.vehicle.enterprise.timezone)
-            )
+        end_time = obj.start_time
+        if end_time is None:
+            return end_time
+        if self.timezone_cache is None:
+            self.timezone_cache = pytz.timezone(obj.vehicle.enterprise.timezone)
+        end_time = end_time.astimezone(self.timezone_cache)
         return end_time
+
+    def get_start_point(self, obj):
+        if obj.start_point:
+            lat, lng = obj.start_point.point.y, obj.start_point.point.x
+            start_address = get_address_from_coordinates(lat, lng)["address"]
+            return start_address
+        return None
+
+    def get_end_point(self, obj):
+        if obj.end_point:
+            lat, lng = obj.end_point.point.y, obj.end_point.point.x
+            end_address = get_address_from_coordinates(lat, lng)["address"]
+            return end_address
+        return None

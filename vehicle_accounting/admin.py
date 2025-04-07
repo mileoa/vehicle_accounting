@@ -17,6 +17,7 @@ from zoneinfo import available_timezones
 from django.db import models
 from django import forms
 from django.contrib.admin import widgets
+from .services import get_address_from_coordinates
 
 
 class ManagerAdmin(admin.ModelAdmin):
@@ -214,6 +215,8 @@ class TripAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "vehicle",
+        "formatted_start_point",
+        "formatted_end_point",
         "formatted_start_time",
         "formatted_end_time",
     ]
@@ -230,8 +233,24 @@ class TripAdmin(admin.ModelAdmin):
             return obj.end_time.strftime("%Y-%m-%d %H:%M:%S")
         return None
 
+    def formatted_start_point(self, obj):
+        if not obj.start_point or not obj.start_point.point:
+            return None
+        lat, lng = obj.start_point.point.y, obj.start_point.point.x
+        start_address = get_address_from_coordinates(lat, lng)["address"]
+        return start_address
+
+    def formatted_end_point(self, obj):
+        if not obj.end_point or not obj.end_point.point:
+            return None
+        lat, lng = obj.end_point.point.y, obj.end_point.point.x
+        end_address = get_address_from_coordinates(lat, lng)["address"]
+        return end_address
+
     formatted_start_time.short_description = "Время начала поездки"
     formatted_end_time.short_description = "Время окончания поездки"
+    formatted_start_point.short_description = "Начальная точка"
+    formatted_end_point.short_description = "Конечная точка"
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

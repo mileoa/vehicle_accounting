@@ -30,6 +30,7 @@ from .views import (
     EnterpriseViewSet,
     ActiveVehicleDriverViewSet,
     IndexVehicleView,
+    DetailVehicleView,
     CreateVehicleView,
     UpdateVehicleView,
     DeleteVehicleView,
@@ -37,6 +38,7 @@ from .views import (
     IndexEnterpiseVehiclesView,
     VehicleGPSPointViewSet,
     TripGPSPointViewSet,
+    TripListViewSet,
 )
 
 handler403 = "vehicle_accounting.views.custom_handler403"
@@ -55,12 +57,19 @@ router.register(
 router.register(
     r"vehicle_gps_points", VehicleGPSPointViewSet, basename="vehicle_gps_points"
 )
-router.register(r"trips", TripGPSPointViewSet, basename="trips")
+router.register(r"trips_tracks", TripGPSPointViewSet, basename="trips_tracks")
+router.register(r"trips", TripListViewSet, basename="trips")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("login/", CustomLoginView.as_view(), name="login"),
+    path("", IndexEnterpisesView.as_view(), name="index"),
     path("vehicles/", IndexVehicleView.as_view(), name="vehicles_list"),
+    path(
+        "vehicles/<int:pk>/",
+        DetailVehicleView.as_view(),
+        name="vehicle_detail",
+    ),
     path(
         "vehicles/create/", CreateVehicleView.as_view(), name="vehicles_create"
     ),

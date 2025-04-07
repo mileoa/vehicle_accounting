@@ -1,0 +1,12 @@
+{% load custom_filter %}
+<form action="/" method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <select class="form-control" name="selected_trips" id="selected-objects" multiple>
+            {% for trip in vehicle.trips.all %}
+                <option value="{{ trip.id }}">{{ trip.start_time|date:"d.m.Y H:i" }} - {{ trip.end_time|date:"d.m.Y H:i" }} | {{ trip.start_point|get_address|default:"" }} - {{ trip.end_point|get_address|default:"" }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <p><input type="submit" value="Построить трек"></p>
+</form>

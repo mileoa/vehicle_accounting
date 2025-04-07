@@ -1,0 +1,66 @@
+{% extends "base.html"%}
+{% load django_bootstrap5 %}
+{% load static %}
+
+{% block content %}
+<h1 class="my-4">Информация о машине</h1>
+<div class="card">
+    <div class="card-header bg-secondary text-white">
+      <h2>{{ vehicle.car_number }}</h2>
+    </div>
+    <div class="card-body bg-light">
+      <p>{{ vehicle.description }}</p>
+      <hr>
+      <div class="container">
+        <div class="row p-1">
+          <div class="col fw-bold">Цена</div>
+          <div class="col">{{ vehicle.price }}</div>
+        </div>
+        <div class="row p-1">
+          <div class="col fw-bold">Год выпуска</div>
+          <div class="col">{{ vehicle.year_of_manufacture }}</div>
+        </div>
+        <div class="row p-1">
+          <div class="col fw-bold">Пробег</div>
+          <div class="col">{{ vehicle.mileage }}</div>
+        </div>
+        <div class="row p-1">
+          <div class="col fw-bold">Время покупки</div>
+          <div class="col "><span class="datetime-field" data-datetime-obj="{{ vehicle.purchase_datetime|date:'c' }}"></span></div>
+        </div>
+        <div class="row p-1">
+            <div class="col fw-bold">Бренд</div>
+            <div class="col">{{ vehicle.brand }}</div>
+        </div>
+        <div class="row p-1">
+            <div class="col fw-bold">Предприятие</div>
+            <div class="col">{{ vehicle.enterprise }}</div>
+        </div>
+        <div class="row p-1">
+            <div class="col fw-bold">Водители</div>
+            <div class="col">
+                {% for vehicle_driver in vehicle.vehicle_drivers.all %}
+                    <div>{{ vehicle_driver.driver.name }}
+                         {% if vehicle_driver.is_active %}
+                            - активный водитель
+                         {% endif%}
+                    </div>
+                {% empty %}
+                <div>-</div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="row p-1">
+            {% include "trip/includes/visualise_trip.html" with vehicle=vehicle %}
+        </div>
+        <div class="row p-1">
+            <div class="col">
+              <a href="{% url 'vehicles_update' pk=vehicle.id %}">Изменить</a>
+              <br>
+              <a href="{% url 'vehicles_delete' pk=vehicle.id %}">Удалить</a>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/formatDatetime.js' %}"></script>
+{% endblock %}

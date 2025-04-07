@@ -9,7 +9,13 @@ from django.contrib.auth.mixins import (
     LoginRequiredMixin,
     PermissionRequiredMixin,
 )
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import (
+    ListView,
+    CreateView,
+    UpdateView,
+    DeleteView,
+    DetailView,
+)
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import ProtectedError
@@ -22,6 +28,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.renderers import JSONRenderer
 from rest_framework import serializers as rest_serializers
 import pytz
+from .utils.time import str_iso_datetime_to_timezone
 from .settings import DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE
 from .models import (
     Vehicle,
@@ -92,6 +99,10 @@ class WebVehicleMixin(CommonWebMixin):
 
 class WebEnterpriseMixin(CommonWebMixin):
     model = Enterprise
+
+
+class WebTripMixin(CommonWebMixin):
+    model = Trip
 
 
 class IndexVehicleView(
@@ -212,6 +223,21 @@ class DeleteVehicleView(WebVehicleMixin, DeleteView):
             return HttpResponseRedirect(reverse_lazy("status_list"))
 
 
+class DetailVehicleView(WebVehicleMixin, DetailView):
+
+    http_method_names = ["get"]
+    template_name = "vehicles/vehicle_detail.html"
+    permission_required = ["vehicle_accounting.view_vehicle"]
+    context_object_name = "vehicle"
+
+    def has_permission(self):
+        if self.request.user.is_superuser:
+            return True
+        vehicle = self.get_object()
+        manager = self.request.user.manager
+        return vehicle.enterprise in manager.enterprises.all()
+
+
 class IndexEnterpisesView(WebEnterpriseMixin, ListView):
     http_method_names = ["get"]
     context_object_name = "enterprises"
@@ -247,6 +273,13 @@ class IndexEnterpiseVehiclesView(WebVehicleMixin, ListView):
             return Vehicle.objects.all()
         manager = Manager.objects.get(user=self.request.user)
         return Vehicle.objects.filter(enterprise=self.kwargs["pk"])
+
+
+class TripMapView(WebTripMixin):
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        return None
 
 
 class VehicleAccountingPaginatiion(PageNumberPagination):
@@ -470,11 +503,9 @@ class VehicleGPSPointViewSet(viewsets.ViewSet):
 class TripViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer]
     serializer_class = TripSerializer
-    pagination_class = VehicleAccountingPaginatiion
     permission_classes = [
         IsAuthenticated,
         HasRoleOrSuper("manager"),
-        DjangoModelPermissions,
     ]
 
     def get_queryset(self):
@@ -541,30 +572,16 @@ class TripGPSPointViewSet(viewsets.ViewSet):
 
         vehicle = Vehicle.objects.get(id=vehicle_id)
         enterprise_timezone = pytz.timezone(vehicle.enterprise.timezone)
-
-        try:
-            naive_start = datetime.fromisoformat(
-                start_date.replace("Z", "+00:00").replace("z", "+00:00")
-            )
-            naive_end = datetime(
-                end_date.replace("Z", "+00:00").replace("z", "+00:00")
-            )
-
-            start_datetime_local = naive_start
-            if naive_start.tzinfo is None:
-                start_datetime_local = enterprise_timezone.localize(naive_start)
-
-            end_datetime_local = naive_end
-            if naive_end.tzinfo is None:
-                end_datetime_local = enterprise_timezone.localize(naive_end)
-
-            start_datetime_utc = start_datetime_local.astimezone(pytz.UTC)
-            end_datetime_utc = end_datetime_local.astimezone(pytz.UTC)
-        except ValueError:
+        start_datetime_utc = str_iso_datetime_to_timezone(
+            start_date, enterprise_timezone, pytz.UTC
+        )
+        end_datetime_utc = str_iso_datetime_to_timezone(
+            end_date, enterprise_timezone, pytz.UTC
+        )
+        if start_datetime_utc is None or end_datetime_utc is None:
             raise rest_serializers.ValidationError(
                 "Invalid date format. Use ISO format YYYY-MM-DDTHH:MM:SS"
             )
-
         trips = Trip.objects.filter(
             vehicle_id=vehicle_id,
             start_time__gte=start_datetime_utc,
@@ -602,8 +619,6 @@ class TripGPSPointViewSet(viewsets.ViewSet):
             query_archived_points
         ).order_by("created_at")
 
-        # return Response(str(query_all_tracks_points.query))
-
         if output_format == "geojson":
             result_points = GeoJSONVehicleGPSPointSerializer(
                 query_all_tracks_points, many=True
@@ -621,23 +636,58 @@ class TripGPSPointViewSet(viewsets.ViewSet):
         return Response(result_points)
 
 
-def test():
-    vehicle_id = 8160
-    start_datetime_utc = datetime.fromisoformat("2025-03-22 17:14:01+00:00")
-    end_datetime_utc = datetime.fromisoformat("2025-03-22 17:14:06+00:00")
-    trips = Trip.objects.filter(
-                vehicle_id=vehicle_id,
-                start_time__gte=start_datetime_utc,
-                end_time__lte=end_datetime_utc,
-            ).order_by("start_time")
-    for trip in trips:
-                query_current_points = (query_current_points| VehicleGPSPoint.objects.filter(vehicle_id=vehicle_id,created_at__gte=trip.start_time created_at__lte=trip.end_time,)) 
-                query_archived_points = (query_archived_points | VehicleGPSPointArchive.objects.filter(vehicle_id=vehicle_id,created_at__gte=trip.start_time,created_at__lte=trip.end_time,))
-                
+class TripListViewSet(viewsets.ViewSet):
+    permission_classes = [
+        IsAuthenticated,
+        HasRoleOrSuper("manager"),
+    ]
 
-    query_all_tracks_points = query_current_points.union(
-                query_archived_points
-            ).order_by("created_at")       
-    result_points = VehicleGPSPointSerializer(
-                query_all_tracks_points, many=True
-            ).data
+    def list(self, request):
+        vehicle_id = request.query_params.get("vehicle_id", None)
+        start_date = request.query_params.get("start_date", None)
+        end_date = request.query_params.get("end_date", None)
+
+        if vehicle_id is None:
+            raise rest_serializers.ValidationError(
+                "'vehicle_id' parameter is required"
+            )
+        if start_date is None:
+            raise rest_serializers.ValidationError(
+                "'start_date' parameter is required"
+            )
+        if end_date is None:
+            raise rest_serializers.ValidationError(
+                "'end_date' parameter is required"
+            )
+
+        if not request.user.is_superuser:
+            manager = Manager.objects.get(user=request.user)
+            is_belong_to_manager = Vehicle.objects.filter(
+                id=vehicle_id, enterprise__in=manager.enterprises.all()
+            ).exists()
+            if not is_belong_to_manager:
+                raise PermissionDenied(
+                    detail="You do not have permission to access this vehicle."
+                )
+
+        vehicle = Vehicle.objects.get(id=vehicle_id)
+        enterprise_timezone = pytz.timezone(vehicle.enterprise.timezone)
+
+        start_datetime_utc = str_iso_datetime_to_timezone(
+            start_date, enterprise_timezone, pytz.UTC
+        )
+        end_datetime_utc = str_iso_datetime_to_timezone(
+            end_date, enterprise_timezone, pytz.UTC
+        )
+        if start_datetime_utc is None or end_datetime_utc is None:
+            raise rest_serializers.ValidationError(
+                "Invalid date format. Use ISO format YYYY-MM-DDTHH:MM:SS"
+            )
+        trips = Trip.objects.filter(
+            vehicle_id=vehicle_id,
+            start_time__gte=start_datetime_utc,
+            end_time__lte=end_datetime_utc,
+        ).order_by("start_time")
+
+        serializer = TripSerializer(trips, many=True)
+        return Response(serializer.data)
