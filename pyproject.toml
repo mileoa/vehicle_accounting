@@ -16,4 +16,5 @@ dependencies = [
     "djangorestframework-gis>=1.1",
     "requests>=2.32.3",
     "django-extensions>=3.2.3",
+    "folium>=0.19.5",
 ]

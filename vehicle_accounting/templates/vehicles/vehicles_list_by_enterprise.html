@@ -27,6 +27,8 @@
             <td>{{ vehicle.car_number }}</td>
             <td>{{ vehicle.brand }}</td>
             <td>
+                <a href="{% url 'vehicle_detail' pk=vehicle.id%}">Информация</a>
+                <br>
                 <a href="{% url 'vehicles_update' pk=vehicle.id%}">Изменить</a>
                 <br>
                 <a href="{% url 'vehicles_delete' pk=vehicle.id%}">Удалить</a>

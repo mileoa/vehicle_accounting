@@ -39,6 +39,7 @@ from .views import (
     VehicleGPSPointViewSet,
     TripGPSPointViewSet,
     TripListViewSet,
+    TripMapView,
 )
 
 handler403 = "vehicle_accounting.views.custom_handler403"
@@ -97,6 +98,11 @@ urlpatterns = [
         "enterprises/<int:pk>/vehicles/",
         IndexEnterpiseVehiclesView.as_view(),
         name="enterprise_vehicles_list",
+    ),
+    path(
+        "trip_map/",
+        TripMapView.as_view(),
+        name="trip_map",
     ),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path(

@@ -15,6 +15,7 @@ from django.views.generic import (
     UpdateView,
     DeleteView,
     DetailView,
+    View,
 )
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
@@ -27,7 +28,9 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.renderers import JSONRenderer
 from rest_framework import serializers as rest_serializers
+import colorsys
 import pytz
+import folium
 from .utils.time import str_iso_datetime_to_timezone
 from .settings import DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE
 from .models import (
@@ -275,11 +278,111 @@ class IndexEnterpiseVehiclesView(WebVehicleMixin, ListView):
         return Vehicle.objects.filter(enterprise=self.kwargs["pk"])
 
 
-class TripMapView(WebTripMixin):
+class TripMapView(WebTripMixin, View):
     http_method_names = ["post"]
+    permission_required = ["vehicle_accounting.view_trip"]
+
+    def get_distinct_colors_hex(self, n):
+        """Генерирует список визуально различимых цветов"""
+        colors = []
+        for i in range(n):
+            # Используем HSV для равномерного распределения по цветовому кругу
+            h = i / n
+            s = 0.8  # Насыщенность
+            v = 0.9  # Яркость
+
+            # Конвертируем HSV в RGB
+            r, g, b = colorsys.hsv_to_rgb(h, s, v)
+
+            # Конвертируем в HEX
+            color = "#{:02x}{:02x}{:02x}".format(
+                int(r * 255), int(g * 255), int(b * 255)
+            )
+            colors.append(color)
+        return colors
 
     def post(self, request, *args, **kwargs):
-        return None
+        selected_trip_ids = request.POST.getlist("selected_trips")
+        if not selected_trip_ids:
+            messages.error(
+                request, "Выберите хотя бы одну поездку для визуализации"
+            )
+            return HttpResponseRedirect(request.META.get("HTTP_REFERER", "/"))
+
+        selected_trip_ids = [int(trip_id) for trip_id in selected_trip_ids]
+        selected_trips = Trip.objects.filter(id__in=selected_trip_ids)
+        colors = self.get_distinct_colors_hex(len(selected_trips))
+
+        folium_map = folium.Map(tiles="OpenStreetMap")
+        all_points = []
+
+        for i, trip in enumerate(selected_trips):
+            # Проверка доступа (если пользователь не суперпользователь)
+            if not request.user.is_superuser:
+                manager = request.user.manager
+                if trip.vehicle.enterprise not in manager.enterprises.all():
+                    raise PermissionDenied("У вас нет доступа к этой поездке")
+
+            # Получаем все GPS точки для этой поездки
+            current_points = VehicleGPSPoint.objects.filter(
+                vehicle=trip.vehicle,
+                created_at__gte=trip.start_time,
+                created_at__lte=trip.end_time,
+            ).order_by("created_at")
+
+            archived_points = VehicleGPSPointArchive.objects.filter(
+                vehicle=trip.vehicle,
+                created_at__gte=trip.start_time,
+                created_at__lte=trip.end_time,
+            ).order_by("created_at")
+
+            # Объединяем текущие и архивные точки
+            all_trip_points = list(current_points) + list(archived_points)
+            all_trip_points.sort(key=lambda x: x.created_at)
+
+            if not all_trip_points:
+                continue
+
+            # Извлекаем координаты для маршрута
+            coordinates = [
+                (point.point.y, point.point.x) for point in all_trip_points
+            ]
+            all_points.extend(coordinates)
+
+            # Получаем цвет для этой поездки
+            color = colors[i]
+
+            # Добавляем трек на карту используя обычный PolyLine
+            folium.PolyLine(
+                locations=coordinates,
+                popup=f"Поездка {trip.vehicle.car_number}: {trip.start_time.strftime('%d.%m.%Y %H:%M')} - {trip.end_time.strftime('%d.%m.%Y %H:%M')}",
+                tooltip=f"Поездка {trip.vehicle.car_number}",
+                color=color,
+                weight=5,
+                opacity=0.8,
+            ).add_to(folium_map)
+
+            # Добавляем маркеры начала и конца поездки
+            if coordinates:
+                # Начальная точка
+                folium.Marker(
+                    location=coordinates[0],
+                    popup=f"Начало поездки {trip.id}: {trip.start_time.strftime('%d.%m.%Y %H:%M')}",
+                    icon=folium.Icon(color="green", icon="play"),
+                ).add_to(folium_map)
+
+                # Конечная точка
+                folium.Marker(
+                    location=coordinates[-1],
+                    popup=f"Конец поездки {trip.id}: {trip.end_time.strftime('%d.%m.%Y %H:%M')}",
+                    icon=folium.Icon(color="red", icon="stop"),
+                ).add_to(folium_map)
+        map_html = folium_map._repr_html_()
+        return render(
+            request,
+            "trip/trip_map.html",
+            {"map_html": map_html, "selected_trips": selected_trips},
+        )
 
 
 class VehicleAccountingPaginatiion(PageNumberPagination):

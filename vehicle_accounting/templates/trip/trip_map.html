@@ -1,0 +1,45 @@
+{% extends "base.html"%}
+{% load django_bootstrap5 %}
+
+{% block title %}Визуализация маршрутов поездок{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Карта маршрутов поездок</h1>
+    
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    Карта маршрутов
+                </div>
+                <div class="card-body p-0">
+                    <div id="map-container" style="height: 600px; width: 100%;">
+                        {{ map_html|safe }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col">
+            <a href="{{ request.META.HTTP_REFERER }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Назад
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Дополнительные стили для карты и легенды */
+    .leaflet-popup-content {
+        min-width: 200px;
+    }
+    
+    /* Убираем лишние отступы из folium map */
+    #map-container .leaflet-container {
+        margin: 0 !important;
+    }
+</style>
+{% endblock %}

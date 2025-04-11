@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 AUTH_USER_MODEL = "vehicle_accounting.CustomUser"
-LOGIN_REDIRECT_URL = "/vehicles"
+LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
