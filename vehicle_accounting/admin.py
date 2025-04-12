@@ -232,6 +232,16 @@ class TripResource(resources.ModelResource):
         manager = Manager.objects.get(user=request.user)
         return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
 
+    def dehydrate_start_point(self, trip):
+        if trip.start_point and trip.start_point.point:
+            return f"({trip.start_point.point.y}, {trip.start_point.point.x})"
+        return None
+
+    def dehydrate_end_point(self, trip):
+        if trip.end_point and trip.end_point.point:
+            return f"({trip.end_point.point.y}, {trip.end_point.point.x})"
+        return None
+
 
 class TripAdmin(ImportExportModelAdmin, ExportActionMixin):
     resource_class = TripResource
