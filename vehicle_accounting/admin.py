@@ -16,7 +16,14 @@ from django.contrib.auth.models import Permission
 from zoneinfo import available_timezones
 from django.db import models
 from django import forms
-from django.contrib.admin import widgets
+from rangefilter.filters import (
+    DateRangeFilterBuilder,
+    DateTimeRangeFilterBuilder,
+    NumericRangeFilterBuilder,
+    DateRangeQuickSelectListFilterBuilder,
+)
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin, ExportActionMixin
 from .services import get_address_from_coordinates
 
 
@@ -84,7 +91,13 @@ class VehicleDriverInline(admin.TabularInline):
     extra = 0
 
 
-class VehicleAdmin(admin.ModelAdmin):
+class VehicleResource(resources.ModelResource):
+    class Meta:
+        model = Vehicle
+
+
+class VehicleAdmin(ImportExportModelAdmin, ExportActionMixin):
+    resource_class = VehicleResource
     inlines = [VehicleDriverInline]
     list_display = [
         "id",
@@ -100,6 +113,7 @@ class VehicleAdmin(admin.ModelAdmin):
         "purchase_datetime",
     ]
     search_fields = ["car_number"]
+    list_filter = ["enterprise"]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -127,7 +141,13 @@ class BrandAdmin(admin.ModelAdmin):
     ]
 
 
-class EnterpriseAdmin(admin.ModelAdmin):
+class EnterpriseResource(resources.ModelResource):
+    class Meta:
+        model = Enterprise
+
+
+class EnterpriseAdmin(ImportExportModelAdmin, ExportActionMixin):
+    resource_class = EnterpriseResource
     list_display = [
         "id",
         "name",
@@ -137,6 +157,7 @@ class EnterpriseAdmin(admin.ModelAdmin):
         "website",
         "timezone",
     ]
+    search_fields = ["name"]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -200,17 +221,20 @@ class VehicleGPSPointArchiveAdmin(admin.ModelAdmin):
     formated_created_at.short_description = "Время"
 
 
-class TripAdminForm(forms.ModelForm):
+class TripResource(resources.ModelResource):
     class Meta:
         model = Trip
-        fields = "__all__"
-        widgets = {
-            "start_time": widgets.AdminSplitDateTime(),
-            "end_time": widgets.AdminSplitDateTime(),
-        }
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        manager = Manager.objects.get(user=request.user)
+        return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
 
 
-class TripAdmin(admin.ModelAdmin):
+class TripAdmin(ImportExportModelAdmin, ExportActionMixin):
+    resource_class = TripResource
     model = Trip
     list_display = [
         "id",
@@ -220,7 +244,9 @@ class TripAdmin(admin.ModelAdmin):
         "formatted_start_time",
         "formatted_end_time",
     ]
-    list_filter = ["vehicle__enterprise", "vehicle"]
+    list_filter = [
+        "vehicle__enterprise",
+    ]
     search_fields = ["vehicle__car_number"]
 
     def formatted_start_time(self, obj):
@@ -258,15 +284,6 @@ class TripAdmin(admin.ModelAdmin):
             return qs
         manager = Manager.objects.get(user=request.user)
         return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
-
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        if not request.user.is_superuser:
-            manager = Manager.objects.get(user=request.user)
-            form.base_fields["vehicle"].queryset = Vehicle.objects.filter(
-                enterprise__in=manager.enterprises.all()
-            )
-        return form
 
 
 admin.site.register(Vehicle, VehicleAdmin)

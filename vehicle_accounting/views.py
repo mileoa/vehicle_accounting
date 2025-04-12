@@ -31,6 +31,7 @@ from rest_framework import serializers as rest_serializers
 import colorsys
 import pytz
 import folium
+from .admin import VehicleResource, EnterpriseResource, TripResource
 from .utils.time import str_iso_datetime_to_timezone
 from .settings import DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE
 from .models import (
@@ -419,6 +420,139 @@ class VehicleViewSet(viewsets.ModelViewSet):
                 detail="You do not have permission to access this object."
             )
         return obj
+
+
+class ExportVehicles(LoginRequiredMixin, View):
+    model = Vehicle
+
+    def get(self, request, *args, **kwargs):
+        export_format = request.GET.get("export_format", "csv")
+        dataset = VehicleResource().export(self.get_queryset())
+        if export_format == "json":
+            response = HttpResponse(dataset.json, content_type="json")
+            response["Content-Disposition"] = (
+                "attachment; filename=vehicles.json"
+            )
+        else:
+            response = HttpResponse(dataset.csv, content_type="csv")
+            response["Content-Disposition"] = (
+                "attachment; filename=vehicles.csv"
+            )
+
+        return response
+
+    def get_queryset(self):
+        queryset = Vehicle.objects.all()
+        vehicle_id = self.request.GET.get("vehicle_id")
+        if vehicle_id is not None:
+            queryset = queryset.filter(id=vehicle_id)
+
+        if self.request.user.is_superuser:
+            return queryset
+        manager = Manager.objects.get(user=self.request.user)
+        queryset = queryset.filter(enterprise__in=manager.enterprises.all())
+        enterprise_id = self.request.GET.get("enterprise_id")
+        if enterprise_id is not None:
+            queryset = queryset.filter(enterprise__id=enterprise_id)
+
+        return queryset
+
+
+class ExportVehicles(LoginRequiredMixin, View):
+    model = Vehicle
+
+    def get(self, request, *args, **kwargs):
+        export_format = request.GET.get("export_format", "csv")
+        dataset = VehicleResource().export(self.get_queryset())
+        if export_format == "json":
+            response = HttpResponse(dataset.json, content_type="json")
+            response["Content-Disposition"] = (
+                "attachment; filename=vehicles.json"
+            )
+        else:
+            response = HttpResponse(dataset.csv, content_type="csv")
+            response["Content-Disposition"] = (
+                "attachment; filename=vehicles.csv"
+            )
+
+        return response
+
+    def get_queryset(self):
+        queryset = Vehicle.objects.all()
+        vehicle_id = self.request.GET.get("vehicle_id")
+        if vehicle_id is not None:
+            queryset = queryset.filter(id=vehicle_id)
+
+        if self.request.user.is_superuser:
+            return queryset
+        manager = Manager.objects.get(user=self.request.user)
+        queryset = queryset.filter(enterprise__in=manager.enterprises.all())
+        enterprise_id = self.request.GET.get("enterprise_id")
+        if enterprise_id is not None:
+            queryset = queryset.filter(enterprise__id=enterprise_id)
+
+        return queryset
+
+
+class ExportEnterprises(LoginRequiredMixin, View):
+    model = Enterprise
+
+    def get(self, request, *args, **kwargs):
+        export_format = request.GET.get("export_format", "csv")
+        dataset = EnterpriseResource().export(self.get_queryset())
+        if export_format == "json":
+            response = HttpResponse(dataset.json, content_type="json")
+            response["Content-Disposition"] = (
+                "attachment; filename=enterprises.json"
+            )
+        else:
+            response = HttpResponse(dataset.csv, content_type="csv")
+            response["Content-Disposition"] = (
+                "attachment; filename=enterprises.csv"
+            )
+
+        return response
+
+    def get_queryset(self):
+        queryset = Enterprise.objects.filter(id=self.kwargs["pk"])
+        if self.request.user.is_superuser:
+            return queryset
+        manager = Manager.objects.get(user=self.request.user)
+        queryset = queryset.filter(id__in=manager.enterprises.all())
+        return queryset
+
+
+class ExportTrips(LoginRequiredMixin, View):
+    model = Trip
+
+    def get(self, request, *args, **kwargs):
+        export_format = request.GET.get("export_format", "csv")
+        dataset = TripResource().export(self.get_queryset())
+        if export_format == "json":
+            response = HttpResponse(dataset.json, content_type="json")
+            response["Content-Disposition"] = "attachment; filename=trips.json"
+        else:
+            response = HttpResponse(dataset.csv, content_type="csv")
+            response["Content-Disposition"] = "attachment; filename=trips.csv"
+
+        return response
+
+    def get_queryset(self):
+        queryset = Trip.objects.all()
+        queryset = queryset.filter(vehicle__id=self.kwargs["vehicle_id"])
+        start_date = self.request.GET.get("start_date")
+        end_date = self.request.GET.get("end_date")
+        queryset = queryset.filter(
+            start_time__date__gte=start_date,
+            end_time__date__lte=end_date,
+        )
+        if self.request.user.is_superuser:
+            return queryset
+        manager = Manager.objects.get(user=self.request.user)
+        queryset = queryset.filter(
+            vehicle__enterprise__in=manager.enterprises.all()
+        )
+        return queryset
 
 
 class BrandViewSet(viewsets.ModelViewSet):

@@ -4,7 +4,13 @@
 {% block title %}Автомобили{% endblock %}
 {% block content %}
 <h1 class="my-4">Автомобили</h1>
-
+<div class="d-flex justify-content-between mb-3">
+    <a class="btn btn-primary" href="{% url 'vehicles_create' %}">Создать машину</a>
+    <div>
+        <a class="btn btn-success" href="{% url 'vehicles_export' %}">Экспорт CSV</a>
+        <a class="btn btn-success" href="{% url 'vehicles_export' %}?export_format=json">Экспорт JSON</a>
+    </div>
+</div>
 <table class="table table-striped">
     <thead>
         <tr>

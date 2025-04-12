@@ -23,7 +23,11 @@
             <td>{{ enterprise.phone }}</td>
             <td>{{ enterprise.email }} </td>
             <td>{{ enterprise.website }}</td>
-            <td><a href="{% url 'enterprise_vehicles_list' pk=enterprise.id%}">Машины предприятия</a></td>
+            <td>
+                <a href="{% url 'enterprise_vehicles_list' pk=enterprise.id %}">Машины предприятия</a><br>
+                <a href="{% url 'enterprises_export' pk=enterprise.id %}">Экспорт CSV</a><br>
+                <a href="{% url 'enterprises_export' pk=enterprise.id %}?export_format=json">Экспорт JSON</a>
+            </td>
         </tr>
         {% endfor %}
     </tbody>

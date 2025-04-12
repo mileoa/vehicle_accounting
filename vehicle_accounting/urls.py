@@ -40,6 +40,9 @@ from .views import (
     TripGPSPointViewSet,
     TripListViewSet,
     TripMapView,
+    ExportVehicles,
+    ExportEnterprises,
+    ExportTrips,
 )
 
 handler403 = "vehicle_accounting.views.custom_handler403"
@@ -83,6 +86,17 @@ urlpatterns = [
         "vehicles/<int:pk>/delete/",
         DeleteVehicleView.as_view(),
         name="vehicles_delete",
+    ),
+    path("vehicles/export/", ExportVehicles.as_view(), name="vehicles_export"),
+    path(
+        "enterprises/export/<int:pk>/",
+        ExportEnterprises.as_view(),
+        name="enterprises_export",
+    ),
+    path(
+        "trips/export/<int:vehicle_id>",
+        ExportTrips.as_view(),
+        name="trips_export",
     ),
     path(
         "enterprises/",

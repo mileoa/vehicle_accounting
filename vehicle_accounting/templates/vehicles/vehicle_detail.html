@@ -4,6 +4,14 @@
 
 {% block content %}
 <h1 class="my-4">Информация о машине</h1>
+<div class="d-flex justify-content-between mb-3">
+  <div>
+    <a class="btn btn-success" href="{% url 'vehicles_update' pk=vehicle.id %}">Изменить</a>
+    <a class="btn btn-success" href="{% url 'vehicles_delete' pk=vehicle.id %}">Удалить</a>
+    <a class="btn btn-success" href="{% url 'vehicles_export' %}?vehicle_id={{ vehicle.id }}">Экспорт CSV</a>
+    <a class="btn btn-success" href="{% url 'vehicles_export' %}?vehicle_id={{ vehicle.id }}&export_format=json">Экспорт JSON</a>
+  </div>
+</div>
 <div class="card">
     <div class="card-header bg-secondary text-white">
       <h2>{{ vehicle.car_number }}</h2>
@@ -51,14 +59,10 @@
             </div>
         </div>
         <div class="row p-1">
-            {% include "trip/includes/visualise_trip.html" with vehicle=vehicle %}
+            {% include "trip/includes/visualise_trips.html" with vehicle=vehicle %}
         </div>
         <div class="row p-1">
-            <div class="col">
-              <a href="{% url 'vehicles_update' pk=vehicle.id %}">Изменить</a>
-              <br>
-              <a href="{% url 'vehicles_delete' pk=vehicle.id %}">Удалить</a>
-            </div>
+          {% include "trip/includes/export_trips.html" with vehicle=vehicle %}
         </div>
     </div>
 </div>

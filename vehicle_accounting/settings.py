@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "django_extensions",
     "rest_framework_gis",
     "django_bootstrap5",
+    "import_export",
+    "rangefilter",
     "rest_framework",
     "rest_framework_simplejwt",
     "vehicle_accounting",
