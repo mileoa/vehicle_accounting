@@ -58,6 +58,16 @@
                 {% endfor %}
             </div>
         </div>
+
+        <div class="row p-1 mt-4">
+          <div class="col fw-bold">Поездки</div>
+          <div class="col text-end">
+            <a href="{% url 'vehicle_trips_import' vehicle_id=vehicle.id %}" class="btn btn-sm btn-primary">
+              <i class="fas fa-upload"></i> Импорт поездок
+            </a>
+          </div>
+        </div>
+
         <div class="row p-1">
             {% include "trip/includes/visualise_trips.html" with vehicle=vehicle %}
         </div>

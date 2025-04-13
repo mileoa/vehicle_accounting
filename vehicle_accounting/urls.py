@@ -43,6 +43,9 @@ from .views import (
     ExportVehicles,
     ExportEnterprises,
     ExportTrips,
+    ImportEnterpriseView,
+    ImportVehicleView,
+    ImportTripView,
 )
 
 handler403 = "vehicle_accounting.views.custom_handler403"
@@ -123,4 +126,19 @@ urlpatterns = [
         "api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"
     ),
     path("api/", include(router.urls)),
+    path(
+        "enterprises/import/",
+        ImportEnterpriseView.as_view(),
+        name="enterprises_import",
+    ),
+    path(
+        "vehicles/import/",
+        ImportVehicleView.as_view(),
+        name="vehicles_import",
+    ),
+    path(
+        "trips/import/<int:vehicle_id>/",
+        ImportTripView.as_view(),
+        name="vehicle_trips_import",
+    ),
 ]

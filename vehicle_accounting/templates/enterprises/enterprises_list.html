@@ -3,7 +3,13 @@
 {% block title %}Предприятия{% endblock %}
 {% block content %}
 <h1 class="my-4">Предприятия</h1>
-
+<div class="d-flex justify-content-between mb-3">
+    <div>
+        <a href="{% url 'enterprises_import' %}" class="btn btn-primary">
+            <i class="fas fa-upload"></i> Импорт предприятий
+        </a>
+    </div>
+</div>
 <table class="table table-striped">
     <thead>
         <tr>

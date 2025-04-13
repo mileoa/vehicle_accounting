@@ -5,7 +5,12 @@
 {% block content %}
 <h1 class="my-4">Автомобили</h1>
 <div class="d-flex justify-content-between mb-3">
-    <a class="btn btn-primary" href="{% url 'vehicles_create' %}">Создать машину</a>
+    <div>
+        <a class="btn btn-primary" href="{% url 'vehicles_create' %}">Создать машину</a>
+        <a class="btn btn-primary" href="{% url 'vehicles_import' %}">
+            <i class="fas fa-upload"></i> Импорт машин
+        </a>
+    </div>
     <div>
         <a class="btn btn-success" href="{% url 'vehicles_export' %}">Экспорт CSV</a>
         <a class="btn btn-success" href="{% url 'vehicles_export' %}?export_format=json">Экспорт JSON</a>
@@ -22,6 +27,7 @@
           <th>Бренд</th>
           <th>Предприятие</th>
           <th>Время покупки</th>
+          <th></th>
         </tr>
     </thead>
     <tbody>
@@ -40,6 +46,13 @@
                 {% else %}
                 -
                 {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'vehicle_detail' pk=vehicle.id%}">Информация</a>
+                <br>
+                <a href="{% url 'vehicles_update' pk=vehicle.id%}">Изменить</a>
+                <br>
+                <a href="{% url 'vehicles_delete' pk=vehicle.id%}">Удалить</a>
             </td>
         </tr>
         {% endfor %}

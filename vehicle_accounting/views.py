@@ -20,6 +20,7 @@ from django.views.generic import (
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import ProtectedError
+from django.contrib.gis.geos import Point
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
@@ -31,6 +32,10 @@ from rest_framework import serializers as rest_serializers
 import colorsys
 import pytz
 import folium
+from io import StringIO, TextIOWrapper
+from decimal import Decimal
+import csv
+import json
 from .admin import VehicleResource, EnterpriseResource, TripResource
 from .utils.time import str_iso_datetime_to_timezone
 from .settings import DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE
@@ -928,3 +933,480 @@ class TripListViewSet(viewsets.ViewSet):
 
         serializer = TripSerializer(trips, many=True)
         return Response(serializer.data)
+
+
+class ImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    template_name = None
+    success_url = None
+    permission_required = []
+
+    def get(self, request, *args, **kwargs):
+        context = self.get_context_data()
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        context = self.get_context_data()
+
+        if "import_file" not in request.FILES:
+            messages.error(request, "Файл не был загружен")
+            return render(request, self.template_name, context)
+
+        import_file = request.FILES["import_file"]
+        import_format = request.POST.get("import_format", "csv")
+        update_existing = request.POST.get("update_existing") == "on"
+
+        try:
+            if import_format == "csv":
+                data = self.parse_csv(import_file)
+            else:  # json
+                data = self.parse_json(import_file)
+
+            results = self.process_data(data, update_existing, request)
+
+            if results["success"]:
+                messages.success(request, results["message"])
+                context["message_type"] = "success"
+            else:
+                messages.error(request, results["message"])
+                context["message_type"] = "danger"
+            # return HttpResponseRedirect(self.success_url)
+            context["result_message"] = results["message"]
+            return render(request, self.template_name, context)
+
+        except Exception as e:
+            error_message = f"Ошибка при импорте данных: {str(e)}"
+            messages.error(request, error_message)
+            context["result_message"] = error_message
+            context["message_type"] = "danger"
+            return render(request, self.template_name, context)
+
+    def get_context_data(self):
+        return {}
+
+    def parse_csv(self, file):
+        csv_file = TextIOWrapper(file, encoding="utf-8-sig")
+        reader = csv.DictReader(csv_file)
+        return list(reader)
+
+    def parse_json(self, file):
+        json_text = file.read().decode("utf-8")
+        return json.loads(json_text)
+
+    def process_data(self, data, update_existing, request):
+        raise NotImplementedError(
+            "Subclasses must implement process_data method"
+        )
+
+
+class ImportEnterpriseView(ImportView):
+    template_name = "enterprises/enterprises_import.html"
+    success_url = reverse_lazy("enterprises_list")
+    # permission_required = ["vehicle_accounting.add_enterprise"]
+
+    def process_data(self, data, update_existing, request):
+        created_count = 0
+        updated_count = 0
+        error_count = 0
+        errors = []
+
+        for row in data:
+            try:
+                # Обязательные поля
+                name = row.get("name")
+                city = row.get("city")
+                phone = row.get("phone")
+                email = row.get("email")
+
+                # Необязательные поля
+                enterprise_id = row.get("id")
+                website = row.get("website", "")
+                timezone_str = row.get("timezone", "UTC")
+
+                # Проверка обязательных полей
+                if not all([name, city, phone, email]):
+                    error_count += 1
+                    errors.append(
+                        f"Отсутствуют обязательные поля для предприятия: {row}"
+                    )
+                    continue
+
+                # Проверка существования предприятия
+                exists = Enterprise.objects.filter(id=enterprise_id).exists()
+
+                if exists and update_existing:
+                    enterprise = Enterprise.objects.get(id=enterprise_id)
+                    enterprise.name = name
+                    enterprise.city = city
+                    enterprise.phone = phone
+                    enterprise.email = email
+                    enterprise.website = website
+                    enterprise.timezone = timezone_str
+                    enterprise.save()
+                    updated_count += 1
+                elif not exists:
+                    Enterprise.objects.create(
+                        name=name,
+                        city=city,
+                        phone=phone,
+                        email=email,
+                        website=website,
+                        timezone=timezone_str,
+                    )
+                    created_count += 1
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Ошибка при обработке строки {row}: {str(e)}")
+
+        result = {
+            "success": error_count == 0,
+            "message": f"Импорт завершен. Создано: {created_count}, Обновлено: {updated_count}, Ошибок: {error_count}",
+        }
+
+        if errors:
+            result["message"] += "\n\nОшибки:\n" + "\n".join(errors)
+
+        return result
+
+
+class ImportVehicleView(ImportView):
+    template_name = "vehicles/vehicles_import.html"
+    success_url = reverse_lazy("vehicles_list")
+    # permission_required = ["vehicle_accounting.add_vehicle"]
+
+    def process_data(self, data, update_existing, request):
+        created_count = 0
+        updated_count = 0
+        error_count = 0
+        errors = []
+
+        # Получаем список предприятий пользователя, если он не суперпользователь
+        if not request.user.is_superuser:
+            manager = Manager.objects.get(user=request.user)
+            allowed_enterprises = set(
+                manager.enterprises.values_list("id", flat=True)
+            )
+
+        for row in data:
+            try:
+                # Обязательные поля
+                car_number = row.get("car_number")
+                price = row.get("price")
+                year_of_manufacture = row.get("year_of_manufacture")
+                mileage = row.get("mileage")
+                brand_id = row.get("brand")
+                enterprise_id = row.get("enterprise")
+
+                # Необязательные поля
+                description = row.get("description", "")
+                purchase_datetime_str = row.get("purchase_datetime")
+                purchase_datetime = None
+
+                if purchase_datetime_str:
+                    purchase_datetime = datetime.datetime.fromisoformat(
+                        purchase_datetime_str.replace("Z", "+00:00")
+                    )
+
+                # Проверка обязательных полей
+                if not all(
+                    [
+                        car_number,
+                        price,
+                        year_of_manufacture,
+                        mileage,
+                        brand_id,
+                        enterprise_id,
+                    ]
+                ):
+                    error_count += 1
+                    errors.append(
+                        f"Отсутствуют обязательные поля для машины: {row}"
+                    )
+                    continue
+
+                try:
+                    enterprise = Enterprise.objects.get(id=enterprise_id)
+                except Enterprise.DoesNotExist:
+                    error_count += 1
+                    errors.append(f"Предприятие '{enterprise_id}' не найдено")
+                    continue
+
+                # Проверяем права доступа к предприятию
+                if (
+                    not request.user.is_superuser
+                    and enterprise.id not in allowed_enterprises
+                ):
+                    error_count += 1
+                    errors.append(
+                        f"У вас нет прав на добавление машин для предприятия: {enterprise.name}"
+                    )
+                    continue
+
+                # Получаем бренд
+                try:
+                    brand = Brand.objects.get(id=brand_id)
+                except Brand.DoesNotExist:
+                    error_count += 1
+                    errors.append(
+                        f"Бренд '{brand_id}' не найден для машины: {car_number}"
+                    )
+                    continue
+
+                # Проверка существования машины
+                exists = Vehicle.objects.filter(car_number=car_number).exists()
+
+                if exists and update_existing:
+                    vehicle = Vehicle.objects.get(car_number=car_number)
+                    vehicle.price = Decimal(price)
+                    vehicle.year_of_manufacture = int(year_of_manufacture)
+                    vehicle.mileage = int(mileage)
+                    vehicle.description = description
+                    vehicle.brand = brand
+                    vehicle.enterprise = enterprise
+                    if purchase_datetime:
+                        vehicle.purchase_datetime = purchase_datetime
+                    vehicle.save()
+                    updated_count += 1
+                elif not exists:
+                    Vehicle.objects.create(
+                        car_number=car_number,
+                        price=Decimal(price),
+                        year_of_manufacture=int(year_of_manufacture),
+                        mileage=int(mileage),
+                        description=description,
+                        brand=brand,
+                        enterprise=enterprise,
+                        purchase_datetime=purchase_datetime,
+                    )
+                    created_count += 1
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Ошибка при обработке строки {row}: {str(e)}")
+
+        result = {
+            "success": error_count == 0,
+            "message": f"Импорт завершен. Создано: {created_count}, Обновлено: {updated_count}, Ошибок: {error_count}",
+        }
+
+        if errors:
+            result["message"] += "\n\nОшибки:\n" + "\n".join(errors)
+
+        return result
+
+
+class ImportTripView(ImportView):
+    template_name = "trip/trips_import.html"
+    permission_required = ["vehicle_accounting.add_trip"]
+
+    def get_success_url(self):
+        vehicle_id = self.kwargs.get("vehicle_id")
+        if vehicle_id:
+            return reverse_lazy("vehicle_detail", kwargs={"pk": vehicle_id})
+        return reverse_lazy("vehicles_list")
+
+    def parse_coordinates(self, coord_str):
+        """Парсинг координат из строки формата '(lat, lng)' в tuple (lat, lng)"""
+        if not coord_str or not isinstance(coord_str, str):
+            return None
+
+        # Удаляем скобки и пробелы, затем разделяем по запятой
+        coord_str = coord_str.strip("() \t\n\r")
+        parts = coord_str.split(",")
+
+        if len(parts) != 2:
+            return None
+
+        try:
+            lat = float(parts[0].strip())
+            lng = float(parts[1].strip())
+            return (lat, lng)
+        except (ValueError, TypeError):
+            return None
+
+    def process_data(self, data, update_existing, request):
+        created_count = 0
+        updated_count = 0
+        error_count = 0
+        errors = []
+
+        # Получаем список предприятий пользователя, если он не суперпользователь
+        if not request.user.is_superuser:
+            manager = Manager.objects.get(user=request.user)
+            allowed_enterprises = set(
+                manager.enterprises.values_list("id", flat=True)
+            )
+
+        for row in data:
+            try:
+                # Получаем автомобиль
+                vehicle_id = self.kwargs["vehicle_id"]
+                vehicle = None
+                try:
+                    vehicle = Vehicle.objects.get(id=vehicle_id)
+                except (Vehicle.DoesNotExist, ValueError):
+                    pass
+                if not vehicle:
+                    error_count += 1
+                    errors.append(
+                        f"Не удалось определить автомобиль для поездки: {row}"
+                    )
+                    continue
+
+                # Проверяем права доступа
+                if (
+                    not request.user.is_superuser
+                    and vehicle.enterprise.id not in allowed_enterprises
+                ):
+                    error_count += 1
+                    errors.append(
+                        f"У вас нет прав на добавление поездок для автомобиля: {vehicle.car_number}"
+                    )
+                    continue
+
+                # Обязательные поля
+                start_time_str = row.get("start_time")
+                end_time_str = row.get("end_time")
+
+                if not all([start_time_str, end_time_str]):
+                    error_count += 1
+                    errors.append(
+                        f"Отсутствуют обязательные поля для поездки: {row}"
+                    )
+                    continue
+
+                # Преобразуем строки времени в datetime объекты
+                try:
+                    start_time = datetime.strptime(
+                        start_time_str, "%Y-%m-%d %H:%M:%S"
+                    )
+                    end_time = datetime.strptime(
+                        end_time_str, "%Y-%m-%d %H:%M:%S"
+                    )
+
+                    # Добавляем информацию о часовом поясе, если её нет
+                    if start_time.tzinfo is None:
+                        tz = pytz.timezone(vehicle.enterprise.timezone)
+                        start_time = tz.localize(start_time)
+                    if end_time.tzinfo is None:
+                        tz = pytz.timezone(vehicle.enterprise.timezone)
+                        end_time = tz.localize(end_time)
+
+                except Exception as e:
+                    error_count += 1
+                    errors.append(
+                        f"Ошибка при обработке даты/времени: {str(e)}"
+                    )
+                    continue
+
+                # Проверяем, что время начала раньше времени окончания
+                if start_time >= end_time:
+                    error_count += 1
+                    errors.append(
+                        f"Время начала поездки должно быть раньше времени окончания: {row}"
+                    )
+                    continue
+
+                # Обрабатываем координаты
+                start_point = None
+                end_point = None
+
+                # Проверяем наличие координат в формате строки "(lat, lng)"
+                start_coords_str = row.get("start_point")
+                end_coords_str = row.get("end_point")
+
+                # Парсим координаты из строки, если они указаны
+                start_coords = self.parse_coordinates(start_coords_str)
+                end_coords = self.parse_coordinates(end_coords_str)
+
+                # Создаем или находим точки GPS
+                existing_start_point = None
+                if start_coords:
+                    existing_start_point = VehicleGPSPoint.objects.filter(
+                        vehicle=vehicle,
+                        point=Point(
+                            start_coords[1], start_coords[0]
+                        ),  # Point(lng, lat)
+                        created_at=start_time,
+                    ).first()
+
+                start_point = None
+                if existing_start_point:
+                    start_point = existing_start_point
+                elif start_coords:
+                    start_point = VehicleGPSPoint.objects.create(
+                        vehicle=vehicle,
+                        point=Point(
+                            start_coords[1], start_coords[0]
+                        ),  # Point(lng, lat)
+                        created_at=start_time,
+                    )
+                    start_point.created_at = start_time
+                    start_point.save()
+
+                existing_end_point = None
+                if end_coords:
+                    existing_end_point = VehicleGPSPoint.objects.filter(
+                        vehicle=vehicle,
+                        point=Point(
+                            end_coords[1], end_coords[0]
+                        ),  # Point(lng, lat)
+                        created_at=end_time,
+                    ).first()
+
+                end_point = None
+                if existing_end_point:
+                    end_point = existing_end_point
+                elif end_coords:
+                    end_point = VehicleGPSPoint.objects.create(
+                        vehicle=vehicle,
+                        point=Point(
+                            end_coords[1], end_coords[0]
+                        ),  # Point(lng, lat)
+                    )
+                    end_point.created_at = end_time
+                    end_point.save()
+
+                # Проверяем существование поездки
+                trip_id = row.get("id")
+                existing_trip = None
+
+                if trip_id:
+                    try:
+                        existing_trip = Trip.objects.filter(id=trip_id).first()
+                    except (Trip.DoesNotExist, ValueError):
+                        pass
+
+                if not existing_trip:
+                    # Проверяем по автомобилю и времени
+                    existing_trip = Trip.objects.filter(
+                        vehicle=vehicle,
+                        start_time=start_time,
+                        end_time=end_time,
+                    ).first()
+
+                if existing_trip and update_existing:
+                    existing_trip.start_point = start_point
+                    existing_trip.end_point = end_point
+                    existing_trip.save()
+                    updated_count += 1
+                elif not existing_trip:
+                    Trip.objects.create(
+                        vehicle=vehicle,
+                        start_time=start_time,
+                        end_time=end_time,
+                        start_point=start_point,
+                        end_point=end_point,
+                    )
+                    created_count += 1
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Ошибка при обработке строки {row}: {str(e)}")
+
+        result = {
+            "success": error_count == 0,
+            "message": f"Импорт завершен. Создано: {created_count}, Обновлено: {updated_count}, Ошибок: {error_count}",
+        }
+
+        if errors:
+            result["message"] += "\n\nОшибки:\n" + "\n".join(errors)
+
+        return result

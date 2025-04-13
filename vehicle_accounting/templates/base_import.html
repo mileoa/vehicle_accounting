@@ -1,0 +1,35 @@
+{% extends "base.html"%}
+{% load django_bootstrap5 %}
+{% block content %}
+<h1 class="my-4">{{ page_title }}</h1>
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        {% block import_kind %} Импорт данных {% endblock %}
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="import_file" class="form-label">Выберите файл для импорта</label>
+                <input type="file" class="form-control" id="import_file" name="import_file" accept=".csv,.json" required>
+                <div class="form-text">Поддерживаемые форматы: CSV, JSON</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="import_format" class="form-label">Формат файла</label>
+                <select class="form-select" id="import_format" name="import_format" required>
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                </select>
+            </div>
+            
+            {% block additional_fields %}{% endblock %}
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{{ back_url }}" class="btn btn-secondary me-md-2">Отмена</a>
+                <button type="submit" class="btn btn-primary">Импортировать</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}    
