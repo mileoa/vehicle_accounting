@@ -1012,6 +1012,7 @@ class ImportEnterpriseView(ImportView):
         for row in data:
             try:
                 # Обязательные поля
+                enterprise_uuid = row.get("uuid")
                 name = row.get("name")
                 city = row.get("city")
                 phone = row.get("phone")
@@ -1023,7 +1024,7 @@ class ImportEnterpriseView(ImportView):
                 timezone_str = row.get("timezone", "UTC")
 
                 # Проверка обязательных полей
-                if not all([name, city, phone, email]):
+                if not all([enterprise_uuid, name, city, phone, email]):
                     error_count += 1
                     errors.append(
                         f"Отсутствуют обязательные поля для предприятия: {row}"
@@ -1031,10 +1032,12 @@ class ImportEnterpriseView(ImportView):
                     continue
 
                 # Проверка существования предприятия
-                exists = Enterprise.objects.filter(id=enterprise_id).exists()
+                exists = Enterprise.objects.filter(
+                    uuid=enterprise_uuid
+                ).exists()
 
                 if exists and update_existing:
-                    enterprise = Enterprise.objects.get(id=enterprise_id)
+                    enterprise = Enterprise.objects.get(uuid=enterprise_uuid)
                     enterprise.name = name
                     enterprise.city = city
                     enterprise.phone = phone
@@ -1045,6 +1048,7 @@ class ImportEnterpriseView(ImportView):
                     updated_count += 1
                 elif not exists:
                     Enterprise.objects.create(
+                        uuid=enterprise_uuid,
                         name=name,
                         city=city,
                         phone=phone,
@@ -1089,12 +1093,13 @@ class ImportVehicleView(ImportView):
         for row in data:
             try:
                 # Обязательные поля
+                car_uuid = row.get("uuid")
                 car_number = row.get("car_number")
                 price = row.get("price")
                 year_of_manufacture = row.get("year_of_manufacture")
                 mileage = row.get("mileage")
-                brand_id = row.get("brand")
-                enterprise_id = row.get("enterprise")
+                brand_uuid = row.get("brand_uuid")
+                enterprise_uuid = row.get("enterprise_uuid")
 
                 # Необязательные поля
                 description = row.get("description", "")
@@ -1102,19 +1107,20 @@ class ImportVehicleView(ImportView):
                 purchase_datetime = None
 
                 if purchase_datetime_str:
-                    purchase_datetime = datetime.datetime.fromisoformat(
+                    purchase_datetime = datetime.fromisoformat(
                         purchase_datetime_str.replace("Z", "+00:00")
                     )
 
                 # Проверка обязательных полей
                 if not all(
                     [
+                        car_uuid,
                         car_number,
                         price,
                         year_of_manufacture,
                         mileage,
-                        brand_id,
-                        enterprise_id,
+                        brand_uuid,
+                        enterprise_uuid,
                     ]
                 ):
                     error_count += 1
@@ -1124,10 +1130,10 @@ class ImportVehicleView(ImportView):
                     continue
 
                 try:
-                    enterprise = Enterprise.objects.get(id=enterprise_id)
+                    enterprise = Enterprise.objects.get(uuid=enterprise_uuid)
                 except Enterprise.DoesNotExist:
                     error_count += 1
-                    errors.append(f"Предприятие '{enterprise_id}' не найдено")
+                    errors.append(f"Предприятие '{enterprise_uuid}' не найдено")
                     continue
 
                 # Проверяем права доступа к предприятию
@@ -1143,19 +1149,20 @@ class ImportVehicleView(ImportView):
 
                 # Получаем бренд
                 try:
-                    brand = Brand.objects.get(id=brand_id)
+                    brand = Brand.objects.get(uuid=brand_uuid)
                 except Brand.DoesNotExist:
                     error_count += 1
                     errors.append(
-                        f"Бренд '{brand_id}' не найден для машины: {car_number}"
+                        f"Бренд '{brand_uuid}' не найден для машины: {car_number}"
                     )
                     continue
 
                 # Проверка существования машины
-                exists = Vehicle.objects.filter(car_number=car_number).exists()
+                exists = Vehicle.objects.filter(uuid=car_uuid).exists()
 
                 if exists and update_existing:
-                    vehicle = Vehicle.objects.get(car_number=car_number)
+                    vehicle = Vehicle.objects.get(uuid=car_uuid)
+                    vehicle.car_number = car_number
                     vehicle.price = Decimal(price)
                     vehicle.year_of_manufacture = int(year_of_manufacture)
                     vehicle.mileage = int(mileage)
@@ -1168,6 +1175,7 @@ class ImportVehicleView(ImportView):
                     updated_count += 1
                 elif not exists:
                     Vehicle.objects.create(
+                        uuid=car_uuid,
                         car_number=car_number,
                         price=Decimal(price),
                         year_of_manufacture=int(year_of_manufacture),
@@ -1263,10 +1271,11 @@ class ImportTripView(ImportView):
                     continue
 
                 # Обязательные поля
+                trip_uuid = row.get("uuid")
                 start_time_str = row.get("start_time")
                 end_time_str = row.get("end_time")
 
-                if not all([start_time_str, end_time_str]):
+                if not all([trip_uuid, start_time_str, end_time_str]):
                     error_count += 1
                     errors.append(
                         f"Отсутствуют обязательные поля для поездки: {row}"
@@ -1366,22 +1375,14 @@ class ImportTripView(ImportView):
                     end_point.save()
 
                 # Проверяем существование поездки
-                trip_id = row.get("id")
                 existing_trip = None
-
-                if trip_id:
+                if trip_uuid:
                     try:
-                        existing_trip = Trip.objects.filter(id=trip_id).first()
+                        existing_trip = Trip.objects.filter(
+                            uuid=trip_uuid
+                        ).first()
                     except (Trip.DoesNotExist, ValueError):
                         pass
-
-                if not existing_trip:
-                    # Проверяем по автомобилю и времени
-                    existing_trip = Trip.objects.filter(
-                        vehicle=vehicle,
-                        start_time=start_time,
-                        end_time=end_time,
-                    ).first()
 
                 if existing_trip and update_existing:
                     existing_trip.start_point = start_point
@@ -1390,6 +1391,7 @@ class ImportTripView(ImportView):
                     updated_count += 1
                 elif not existing_trip:
                     Trip.objects.create(
+                        uuid=trip_uuid,
                         vehicle=vehicle,
                         start_time=start_time,
                         end_time=end_time,

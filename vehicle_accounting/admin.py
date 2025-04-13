@@ -22,6 +22,8 @@ from rangefilter.filters import (
     NumericRangeFilterBuilder,
     DateRangeQuickSelectListFilterBuilder,
 )
+from import_export import resources, fields
+from import_export.widgets import ForeignKeyWidget
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin, ExportActionMixin
 from .services import get_address_from_coordinates
@@ -92,8 +94,34 @@ class VehicleDriverInline(admin.TabularInline):
 
 
 class VehicleResource(resources.ModelResource):
+    uuid = fields.Field(column_name="uuid", attribute="uuid")
+
+    # Используем UUID предприятия вместо его ID
+    enterprise_uuid = fields.Field(
+        column_name="enterprise_uuid",
+        attribute="enterprise",
+        widget=ForeignKeyWidget(Enterprise, "uuid"),
+    )
+    brand_uuid = fields.Field(
+        column_name="brand_uuid",
+        attribute="brand",
+        widget=ForeignKeyWidget(Brand, "uuid"),
+    )
+
     class Meta:
         model = Vehicle
+        fields = (
+            "uuid",
+            "car_number",
+            "price",
+            "year_of_manufacture",
+            "mileage",
+            "description",
+            "purchase_datetime",
+            "enterprise_uuid",
+            "brand_uuid",
+        )
+        export_order = fields
 
 
 class VehicleAdmin(ImportExportModelAdmin, ExportActionMixin):
@@ -142,8 +170,20 @@ class BrandAdmin(admin.ModelAdmin):
 
 
 class EnterpriseResource(resources.ModelResource):
+    uuid = fields.Field(column_name="uuid", attribute="uuid")
+
     class Meta:
         model = Enterprise
+        fields = (
+            "uuid",
+            "name",
+            "city",
+            "phone",
+            "email",
+            "website",
+            "timezone",
+        )
+        export_order = fields
 
 
 class EnterpriseAdmin(ImportExportModelAdmin, ExportActionMixin):
@@ -222,15 +262,25 @@ class VehicleGPSPointArchiveAdmin(admin.ModelAdmin):
 
 
 class TripResource(resources.ModelResource):
+    uuid = fields.Field(column_name="uuid", attribute="uuid")
+
+    vehicle = fields.Field(
+        column_name="vehicle_uuid",
+        attribute="vehicle",
+        widget=ForeignKeyWidget(Vehicle, "uuid"),
+    )
+
     class Meta:
         model = Trip
-
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        manager = Manager.objects.get(user=request.user)
-        return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
+        fields = (
+            "uuid",
+            "vehicle",
+            "start_time",
+            "end_time",
+            "start_point",
+            "end_point",
+        )
+        export_order = fields
 
     def dehydrate_start_point(self, trip):
         if trip.start_point and trip.start_point.point:

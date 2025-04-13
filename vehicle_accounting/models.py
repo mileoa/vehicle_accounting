@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.gis.db import models as gis_models
 from django.db.models import UniqueConstraint
 from django.contrib.auth.models import AbstractUser
+import uuid
 from . import settings
 
 
@@ -46,6 +47,7 @@ class Brand(models.Model):
         help_text="Грузоподъемность кг"
     )
     seats_number = models.PositiveIntegerField(help_text="Количество мест")
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         indexes = [
@@ -67,11 +69,10 @@ class Enterprise(models.Model):
         choices=[(tz, tz) for tz in available_timezones()],
         default=settings.TIME_ZONE,
     )
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        indexes = [
-            models.Index(fields=["id"]),
-        ]
+        indexes = [models.Index(fields=["id"]), models.Index(fields=["uuid"])]
 
     def __str__(self):
         return self.name
@@ -190,11 +191,10 @@ class Vehicle(models.Model):
     purchase_datetime = models.DateTimeField(
         verbose_name="Время покупки", null=True, blank=True
     )
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        indexes = [
-            models.Index(fields=["id"]),
-        ]
+        indexes = [models.Index(fields=["id"]), models.Index(fields=["uuid"])]
 
     def clean(self):
         if not self.pk:
@@ -275,6 +275,7 @@ class VehicleGPSPoint(models.Model):
     )
     point = gis_models.PointField(verbose_name="Местоположение")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Время")
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         indexes = [
@@ -326,10 +327,12 @@ class Trip(models.Model):
         on_delete=models.SET_NULL,
         verbose_name="Конечная точка",
     )
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["vehicle", "start_time", "end_time"]),
+            models.Index(fields=["uuid"]),
         ]
         ordering = ["-start_time"]
 
