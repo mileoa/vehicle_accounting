@@ -9,6 +9,15 @@ from django.contrib.auth.models import AbstractUser
 import uuid
 from . import settings
 
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Distance
+from django.db.models import Sum
+from datetime import datetime, timedelta
+from django.utils import timezone
+import pytz
+import math
+import pytz
+
 
 class CustomUser(AbstractUser):
     groups = models.ManyToManyField(
@@ -352,3 +361,8 @@ class Trip(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+    def generate_report(self):
+        raise NotImplementedError(
+            "Subclasses must implement generate_report method"
+        )

@@ -46,6 +46,10 @@ from .views import (
     ImportEnterpriseView,
     ImportVehicleView,
     ImportTripView,
+    ReportListView,
+    VehicleSalesReportView,
+    VehicleMileageReportView,
+    DriverAssignmentReportView,
 )
 
 handler403 = "vehicle_accounting.views.custom_handler403"
@@ -66,6 +70,7 @@ router.register(
 )
 router.register(r"trips_tracks", TripGPSPointViewSet, basename="trips_tracks")
 router.register(r"trips", TripListViewSet, basename="trips")
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -140,5 +145,21 @@ urlpatterns = [
         "trips/import/<int:vehicle_id>/",
         ImportTripView.as_view(),
         name="vehicle_trips_import",
+    ),
+    path("reports/", ReportListView.as_view(), name="report_list"),
+    path(
+        "reports/vehicle-mileage/",
+        VehicleMileageReportView.as_view(),
+        name="report_vehicle_mileage",
+    ),
+    path(
+        "reports/vehicle-sales/",
+        VehicleSalesReportView.as_view(),
+        name="report_vehicle_sales",
+    ),
+    path(
+        "reports/driver-assignment/",
+        DriverAssignmentReportView.as_view(),
+        name="report_driver_assignment",
     ),
 ]
