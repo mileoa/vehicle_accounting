@@ -229,6 +229,15 @@ wheels = [
 ]
 
 [[package]]
+name = "gpxpy"
+version = "1.6.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/ad/6f1a34e702c72cb495bb258396f237ded76c00f9fe67054a44d778d24ed9/gpxpy-1.6.2.tar.gz", hash = "sha256:a72c484b97ec42b80834353b029cc8ee1b79f0ffca1179b2210bb3baf26c01ae", size = 111695 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/9f/62df6c1e52462bdd04275b36cec49efa9e8af7e7b834499eb288f73dcfbc/gpxpy-1.6.2-py3-none-any.whl", hash = "sha256:289bc2d80f116c988d0a1e763fda22838f83005573ece2bbc6521817b26fb40a", size = 42649 },
+]
+
+[[package]]
 name = "idna"
 version = "3.10"
 source = { registry = "https://pypi.org/simple" }
@@ -481,6 +490,7 @@ dependencies = [
     { name = "djangorestframework-simplejwt" },
     { name = "faker" },
     { name = "folium" },
+    { name = "gpxpy" },
     { name = "psycopg2-binary" },
     { name = "python-dotenv" },
     { name = "pytz" },
@@ -499,6 +509,7 @@ requires-dist = [
     { name = "djangorestframework-simplejwt", specifier = ">=5.4.0" },
     { name = "faker", specifier = ">=36.1.1" },
     { name = "folium", specifier = ">=0.19.5" },
+    { name = "gpxpy", specifier = ">=1.6.2" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "pytz", specifier = ">=2025.1" },

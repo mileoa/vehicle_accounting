@@ -12,14 +12,13 @@
             <div class="mb-3">
                 <label for="import_file" class="form-label">Выберите файл для импорта</label>
                 <input type="file" class="form-control" id="import_file" name="import_file" accept=".csv,.json" required>
-                <div class="form-text">Поддерживаемые форматы: CSV, JSON</div>
             </div>
 
             <div class="mb-3">
                 <label for="import_format" class="form-label">Формат файла</label>
                 <select class="form-select" id="import_format" name="import_format" required>
-                    <option value="csv">CSV</option>
-                    <option value="json">JSON</option>
+                    {% block import_options %}
+                    {% endblock %}
                 </select>
             </div>
             

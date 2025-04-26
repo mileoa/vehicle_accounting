@@ -1,4 +1,6 @@
 import ast
+import uuid
+import gpxpy
 from django.shortcuts import get_object_or_404, render, HttpResponseRedirect
 from django.core.serializers import serialize
 from datetime import datetime, timedelta
@@ -962,12 +964,14 @@ class ImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
             return render(request, self.template_name, context)
 
         import_file = request.FILES["import_file"]
-        import_format = request.POST.get("import_format", "csv")
+        import_format = request.POST.get("import_format", "json")
         update_existing = request.POST.get("update_existing") == "on"
 
         try:
             if import_format == "csv":
                 data = self.parse_csv(import_file)
+            elif import_format == "gpx":
+                data = self.parse_gpx(import_file)
             else:  # json
                 data = self.parse_json(import_file)
 
@@ -1001,6 +1005,55 @@ class ImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
     def parse_json(self, file):
         json_text = file.read().decode("utf-8")
         return json.loads(json_text)
+
+    def parse_gpx(self, file):
+        gpx_file = TextIOWrapper(file, encoding="utf-8-sig")
+        gpx = gpxpy.parse(gpx_file)
+        parsed_gpx = []
+        for trk in gpx.tracks:
+            track = {
+                "uuid": None,
+                "vehicle_uuid": None,
+                "start_time": None,
+                "end_time": None,
+                "start_point": None,
+                "end_point": None,
+                "track_points": [],
+            }
+
+            start_point = None
+            if trk.segments[0].points:
+                start_point = trk.segments[0].points[0]
+                track["start_point"] = (
+                    f"({start_point.latitude}, {start_point.longitude})"
+                )
+                track["start_time"] = start_point.time.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+
+            i = len(trk.segments) - 1
+            end_point = None
+            while i >= 0 and end_point is None:
+                if trk.segments[i].points:
+                    end_point = trk.segments[i].points[-1]
+                    track["end_point"] = (
+                        f"({end_point.latitude}, {end_point.longitude})"
+                    )
+                    track["end_time"] = end_point.time.strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                i -= 1
+
+            for segment in trk.segments:
+                for point in segment.points:
+                    if point in (start_point, end_point):
+                        continue
+                    track["track_points"].append(
+                        f"({point.latitude}, {point.longitude})"
+                    )
+
+            parsed_gpx.append(track)
+        return parsed_gpx
 
     def process_data(self, data, update_existing, request):
         raise NotImplementedError(
@@ -1280,12 +1333,15 @@ class ImportTripView(ImportView):
                     )
                     continue
 
-                # Обязательные поля
-                trip_uuid = row.get("uuid")
+                trip_uuid = row.get("uuid", None)
                 start_time_str = row.get("start_time")
                 end_time_str = row.get("end_time")
+                end_time_str = row.get("end_time")
+                track_points = []
+                if request.POST.get("import_format") == "gpx":
+                    track_points = row.get("track_points")
 
-                if not all([trip_uuid, start_time_str, end_time_str]):
+                if not all([start_time_str, end_time_str]):
                     error_count += 1
                     errors.append(
                         f"Отсутствуют обязательные поля для поездки: {row}"
@@ -1317,7 +1373,7 @@ class ImportTripView(ImportView):
                     continue
 
                 # Проверяем, что время начала раньше времени окончания
-                if start_time >= end_time:
+                if start_time > end_time:
                     error_count += 1
                     errors.append(
                         f"Время начала поездки должно быть раньше времени окончания: {row}"
@@ -1394,12 +1450,24 @@ class ImportTripView(ImportView):
                     except (Trip.DoesNotExist, ValueError):
                         pass
 
+                if not trip_uuid:
+                    trip_uuid = uuid.uuid4()
+
                 if existing_trip and update_existing:
                     existing_trip.start_point = start_point
                     existing_trip.end_point = end_point
                     existing_trip.save()
                     updated_count += 1
-                elif not existing_trip:
+
+                if not existing_trip and self.is_trip_overlap_any(
+                    vehicle.id, start_time, end_time
+                ):
+                    error_count += 1
+                    errors.append(
+                        f"Поездка пересекается с другой поездкой: {row}"
+                    )
+                    continue
+                if not existing_trip:
                     Trip.objects.create(
                         uuid=trip_uuid,
                         vehicle=vehicle,
@@ -1409,6 +1477,17 @@ class ImportTripView(ImportView):
                         end_point=end_point,
                     )
                     created_count += 1
+
+                if not existing_trip and track_points:
+                    gps_points = [
+                        VehicleGPSPoint(vehicle=vehicle, point=Point(lng, lat))
+                        for lat, lng in [
+                            self.parse_coordinates(point)
+                            for point in track_points
+                        ]
+                    ]
+                    VehicleGPSPoint.objects.bulk_create(gps_points)
+
             except Exception as e:
                 error_count += 1
                 errors.append(f"Ошибка при обработке строки {row}: {str(e)}")
@@ -1422,6 +1501,13 @@ class ImportTripView(ImportView):
             result["message"] += "\n\nОшибки:\n" + "\n".join(errors)
 
         return result
+
+    def is_trip_overlap_any(self, vehicle_id, start_time, end_time):
+        return Trip.objects.filter(
+            vehicle__id=vehicle_id,
+            start_time__lt=end_time,
+            end_time__gt=start_time,
+        ).exists()
 
 
 class ReportBaseView(LoginRequiredMixin, PermissionRequiredMixin):

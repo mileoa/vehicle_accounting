@@ -1,5 +1,13 @@
 {% extends "base_import.html"%}
+
 {% block import_kind %} Импорт поездок {% endblock %}
+
+{% block import_options %}
+<option value="csv">CSV</option>
+<option value="json">JSON</option>
+<option value="gpx">GPX</option>
+{% endblock %}
+
 {% block additional_fields %}
 <div class="mb-3">
     <div class="form-check">
