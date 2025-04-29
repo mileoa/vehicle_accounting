@@ -126,6 +126,12 @@ class WebTripMixin(CommonWebMixin):
     model = Trip
 
 
+class VehicleAccountingPaginatiion(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class IndexVehicleView(
     WebVehicleMixin,
     ListView,
@@ -133,13 +139,18 @@ class IndexVehicleView(
     http_method_names = ["get"]
     context_object_name = "vehicles"
     template_name = "vehicles/vehicles_list.html"
+    paginate_by = 100
     permission_required = ["vehicle_accounting.view_vehicle"]
 
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Vehicle.objects.all()
-        manager = Manager.objects.get(user=self.request.user)
-        return Vehicle.objects.filter(enterprise__in=manager.enterprises.all())
+        if hasattr(self.request.user, "manager"):
+            manager = Manager.objects.get(user=self.request.user)
+            return Vehicle.objects.filter(
+                enterprise__in=manager.enterprises.all()
+            )
+        return Vehicle.objects.none()
 
 
 class CreateVehicleView(WebVehicleMixin, CreateView):
@@ -206,9 +217,11 @@ class UpdateVehicleView(WebVehicleMixin, UpdateView):
     def has_permission(self):
         if self.request.user.is_superuser:
             return True
-        vehicle = self.get_object()
-        manager = self.request.user.manager
-        return vehicle.enterprise in manager.enterprises.all()
+        if hasattr(self.request.user, "manager"):
+            vehicle = self.get_object()
+            manager = self.request.user.manager
+            return vehicle.enterprise in manager.enterprises.all()
+        return False
 
 
 class DeleteVehicleView(WebVehicleMixin, DeleteView):
@@ -222,9 +235,11 @@ class DeleteVehicleView(WebVehicleMixin, DeleteView):
     def has_permission(self):
         if self.request.user.is_superuser:
             return True
-        vehicle = self.get_object()
-        manager = self.request.user.manager
-        return vehicle.enterprise in manager.enterprises.all()
+        if hasattr(self.request.user, "manager"):
+            vehicle = self.get_object()
+            manager = self.request.user.manager
+            return vehicle.enterprise in manager.enterprises.all()
+        return False
 
     def post(self, request, *args, **kwargs):
         try:
@@ -254,15 +269,18 @@ class DetailVehicleView(WebVehicleMixin, DetailView):
     def has_permission(self):
         if self.request.user.is_superuser:
             return True
-        vehicle = self.get_object()
-        manager = self.request.user.manager
-        return vehicle.enterprise in manager.enterprises.all()
+        if hasattr(self.request.user, "manager"):
+            vehicle = self.get_object()
+            manager = self.request.user.manager
+            return vehicle.enterprise in manager.enterprises.all()
+        return False
 
 
 class IndexEnterpisesView(WebEnterpriseMixin, ListView):
     http_method_names = ["get"]
     context_object_name = "enterprises"
     template_name = "enterprises/enterprises_list.html"
+    paginate_by = 100
     permission_required = ["vehicle_accounting.view_enterprise"]
 
     def get_queryset(self):
@@ -276,6 +294,7 @@ class IndexEnterpiseVehiclesView(WebVehicleMixin, ListView):
     http_method_names = ["get"]
     context_object_name = "vehicles"
     template_name = "vehicles/vehicles_list_by_enterprise.html"
+    paginate_by = 100
     permission_required = ["vehicle_accounting.view_vehicle"]
 
     def get_context_data(self, **kwargs):
@@ -286,8 +305,10 @@ class IndexEnterpiseVehiclesView(WebVehicleMixin, ListView):
     def has_permission(self):
         if self.request.user.is_superuser:
             return True
-        manager = self.request.user.manager
-        return manager.enterprises.filter(pk=self.kwargs["pk"]).exists()
+        if hasattr(self.request.user, "manager"):
+            manager = self.request.user.manager
+            return manager.enterprises.filter(pk=self.kwargs["pk"]).exists()
+        return False
 
     def get_queryset(self):
         if self.request.user.is_superuser:
@@ -403,12 +424,6 @@ class TripMapView(WebTripMixin, View):
         )
 
 
-class VehicleAccountingPaginatiion(PageNumberPagination):
-    page_size = 5
-    page_size_query_param = "page_size"
-    max_page_size = 100
-
-
 class VehicleViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer]
     serializer_class = VehicleSerializer
@@ -439,8 +454,11 @@ class VehicleViewSet(viewsets.ModelViewSet):
         return obj
 
 
-class ExportVehicles(LoginRequiredMixin, View):
+class ExportVehicles(LoginRequiredMixin, PermissionRequiredMixin, View):
     model = Vehicle
+    permission_required = [
+        "vehicle_accounting.view_vehicle",
+    ]
 
     def get(self, request, *args, **kwargs):
         export_format = request.GET.get("export_format", "csv")
@@ -475,44 +493,11 @@ class ExportVehicles(LoginRequiredMixin, View):
         return queryset
 
 
-class ExportVehicles(LoginRequiredMixin, View):
-    model = Vehicle
-
-    def get(self, request, *args, **kwargs):
-        export_format = request.GET.get("export_format", "csv")
-        dataset = VehicleResource().export(self.get_queryset())
-        if export_format == "json":
-            response = HttpResponse(dataset.json, content_type="json")
-            response["Content-Disposition"] = (
-                "attachment; filename=vehicles.json"
-            )
-        else:
-            response = HttpResponse(dataset.csv, content_type="csv")
-            response["Content-Disposition"] = (
-                "attachment; filename=vehicles.csv"
-            )
-
-        return response
-
-    def get_queryset(self):
-        queryset = Vehicle.objects.all()
-        vehicle_id = self.request.GET.get("vehicle_id")
-        if vehicle_id is not None:
-            queryset = queryset.filter(id=vehicle_id)
-
-        if self.request.user.is_superuser:
-            return queryset
-        manager = Manager.objects.get(user=self.request.user)
-        queryset = queryset.filter(enterprise__in=manager.enterprises.all())
-        enterprise_id = self.request.GET.get("enterprise_id")
-        if enterprise_id is not None:
-            queryset = queryset.filter(enterprise__id=enterprise_id)
-
-        return queryset
-
-
-class ExportEnterprises(LoginRequiredMixin, View):
+class ExportEnterprises(LoginRequiredMixin, PermissionRequiredMixin, View):
     model = Enterprise
+    permission_required = [
+        "vehicle_accounting.view_enterprises",
+    ]
 
     def get(self, request, *args, **kwargs):
         export_format = request.GET.get("export_format", "csv")
@@ -539,8 +524,11 @@ class ExportEnterprises(LoginRequiredMixin, View):
         return queryset
 
 
-class ExportTrips(LoginRequiredMixin, View):
+class ExportTrips(LoginRequiredMixin, PermissionRequiredMixin, View):
     model = Trip
+    permission_required = [
+        "vehicle_accounting.view_trip",
+    ]
 
     def get(self, request, *args, **kwargs):
         export_format = request.GET.get("export_format", "csv")
@@ -1064,7 +1052,7 @@ class ImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
 class ImportEnterpriseView(ImportView):
     template_name = "enterprises/enterprises_import.html"
     success_url = reverse_lazy("enterprises_list")
-    # permission_required = ["vehicle_accounting.add_enterprise"]
+    permission_required = ["vehicle_accounting.add_enterprises"]
 
     def process_data(self, data, update_existing, request):
         created_count = 0
@@ -1138,7 +1126,7 @@ class ImportEnterpriseView(ImportView):
 class ImportVehicleView(ImportView):
     template_name = "vehicles/vehicles_import.html"
     success_url = reverse_lazy("vehicles_list")
-    # permission_required = ["vehicle_accounting.add_vehicle"]
+    permission_required = ["vehicle_accounting.add_vehicle"]
 
     def process_data(self, data, update_existing, request):
         created_count = 0
@@ -1512,7 +1500,13 @@ class ImportTripView(ImportView):
 
 class ReportBaseView(LoginRequiredMixin, PermissionRequiredMixin):
     template_name = None
-    permission_required = []
+    permission_required = [
+        "vehicle_accounting.view_vehicle",
+        "vehicle_accounting.view_driver",
+        "vehicle_accounting.view_brand",
+        "vehicle_accounting.view_enterprise",
+        "vehicle_accounting.view_trip",
+    ]
 
     def get_enterprises(self):
         if self.request.user.is_superuser:

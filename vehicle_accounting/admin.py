@@ -41,14 +41,16 @@ class ManagerAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         self.assign_view_permissions(
-            obj.user, [Driver, Vehicle, VehicleDriver, Brand, Enterprise]
+            obj.user, [Driver, Vehicle, VehicleDriver, Brand, Enterprise, Trip]
         )
-        self.assign_add_permissions(obj.user, [Driver, Vehicle, VehicleDriver])
+        self.assign_add_permissions(
+            obj.user, [Driver, Vehicle, VehicleDriver, Enterprise, Trip]
+        )
         self.assign_delete_permissions(
             obj.user, [Driver, Vehicle, VehicleDriver]
         )
         self.assign_change_permissions(
-            obj.user, [Driver, Vehicle, VehicleDriver]
+            obj.user, [Driver, Vehicle, VehicleDriver, Trip]
         )
 
     def assign_view_permissions(self, user, models):

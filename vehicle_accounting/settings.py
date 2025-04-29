@@ -28,9 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = (
-    "django-insecure-3b!qzaa4a&)rh1be08@9n_w9+17y+2aqvlgt)p)vhzx%=&y2#2"
-)
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -158,3 +156,6 @@ REST_FRAMEWORK = {
 
 # Days to move vehicle GPS points to archive
 DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE = 30
+
+GRAPHHOPPER_API_KEY = os.getenv("GRAPHHOPPER_API_KEY")
+GEOPIFY_API_KEY = os.getenv("GEOPIFY_API_KEY")

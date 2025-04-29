@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>День Победы - детский утренник</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .slide {
+            display: none;
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            min-height: 500px;
+            position: relative;
+        }
+        .slide.active {
+            display: block;
+        }
+        .slide-content {
+            text-align: center;
+        }
+        .slide-image {
+            width: 100%;
+            height: 400px;
+            background-color: #ddd;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+        }
+        .slide-title {
+            font-size: 28px;
+            color: #d9534f;
+            margin-bottom: 15px;
+        }
+        .slide-text {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .navigation {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+        }
+        .nav-button {
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .nav-button:hover {
+            background-color: #c9302c;
+        }
+        .slide-number {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: #777;
+        }
+        .note {
+            font-style: italic;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .source-link {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="slide active" id="slide1">
+            <div class="slide-content">
+                <div class="slide-title">День Победы</div>
+                <div class="slide-image">
+                    <p>Изображение: Праздничный салют на День Победы</p>
+                </div>
+                <div class="slide-text">
+                    <p>Звучит песня "День Победы"</p>
+                    <p>Дорогие ребята, сегодня мы собрались, чтобы отметить великий, радостный, но в то же время грустный праздник, праздник со слезами на глазах.</p>
+                </div>
+                <div class="note">
+                    Источник для изображения: https://www.1tv.ru/shows/den-pobedy/syuzhety/prazdnichnyy-salyut-posvyashennyy-71-y-godovshine-velikoy-pobedy
+                </div>
+            </div>
+            <div class="slide-number">1/20</div>
+        </div>
+
+        <div class="slide" id="slide2">
+            <div class="slide-content">
+                <div class="slide-title">Что такое День Победы?</div>
+                <div class="slide-image">
+                    <p>Изображение: Ветераны с георгиевскими ленточками</p>
+                </div>
+                <div class="slide-text">
+                    <p><b>Что такое День Победы?<br>
+                    Это гордость всей страны!<br>
+                    Это мир над головою!<br>
+                    Это значит нет войны!</b></p>
+                </div>
+                <div class="note">
+                    Источник для изображения: https://tass.ru/obschestvo/6661374
+                </div>
+            </div>
+            <div class="slide-number">2/20</div>
+        </div>
+
+        <div class="slide" id="slide3">
+            <div class="slide-content">
+                <div class="slide-title">80 лет Великой Победе</div>
+                <div class="slide-image">
+                    <p>Изображение: Празднование Дня Победы сегодня</p>
+                </div>
+                <div class="slide-text">
+                    <p>Прошло целых 80 лет с этого Великого дня, со Дня когда враг был сломлен и признал своё поражение — 80 лет это целая человеческая жизнь.</p>
+                    <p>Это было так давно, тогда ещё не родились не вы, ни ваши папы и мамы ни даже ваши бабушки и дедушки.</p>
+                </div>
+            </div>
+            <div class="slide-number">3/20</div>
+        </div>
+
+        <div class="slide" id="slide4">
+            <div class="slide-content">
+                <div class="slide-title">Ветераны Великой Отечественной войны</div>
+                <div class="slide-image">
+                    <p>Коллаж: Фото ветеранов (пожилые люди сегодня и молодые в военное время)</p>
+                </div>
+                <div class="slide-text">
+                    <p>Мы привыкли, что ветераны — это пожилые люди, но тогда в те далёкие годы, они были совсем молодыми, моложе даже ваших пап и мам. Когда началась ВОВ многие только что закончили школу, а некоторые ещё учились в школе.</p>
+                </div>
+                <div class="note">
+                    Источники для изображений: 
+                    <br>https://russiainphoto.ru/exhibitions/117/
+                    <br>https://gaorel.ru/gallery-vov
+                </div>
+            </div>
+            <div class="slide-number">4/20</div>
+        </div>
+
+        <div class="slide" id="slide5">
+            <div class="slide-content">
+                <div class="slide-title">Письмо с фронта</div>
+                <div class="slide-image">
+                    <p>Изображение: Молодой солдат пишет письмо</p>
+                </div>
+                <div class="slide-text">
+                    <p><b>Мои братья и сёстры родные!<br>
+                    Завтра я снова в бой иду<br>
+                    За Отчизну свою, за Россию,<br>
+                    Что попала в лихую беду...</b></p>
+                </div>
+                <div class="note">
+                    Источник для изображения: https://stoneforest.ru/event/history/fotografii-sovetskix-soldat-vremen-vov/
+                </div>
+            </div>
+            <div class="slide-number">5/20</div>
+        </div>
+
+        <div class="slide" id="slide6">
+            <div class="slide-content">
+                <div class="slide-title">Рассказ ветерана</div>
+                <div class="slide-image">
+                    <p>Изображение: Солдаты в окопах под Москвой</p>
+                </div>
+                <div class="slide-text">
+                    <p><b>Я, ребята, на войне<br>
+                    В бой ходил, горел в огне.<br>
+                    Мёрз в окопах под Москвой,<br>
+                    Но, как видите, - живой.</b></p>
+                </div>
+                <div class="note">
+                    Источник для изображения: https://www.culture.ru/materials/258137/12-legendarnykh-voennykh-snimkov
+                </div>
+            </div>
+            <div class="slide-number">6/20</div>
+        </div>
+
+        <div class="slide" id="slide7">
+            <div class="slide-content">
+                <div class="slide-title">Враг напал на нашу Родину</div>
+                <div class="slide-image">
+                    <p>Изображение: Фото разрушенных городов</p>
+                </div>
+                <div class="slide-text">
+                    <p>Правильно, напала на нашу страну фашистская Германия. Фашисты хотели захватить наши города и сёла, убить всех мирных жителей, а оставшихся в живых сделать рабами.</p>
+                    <p>Для достижения своей цели фашисты с первых дней войны жгли и бомбили наши города и сёла.</p>
+                </div>
+            </div>
+            <div class="slide-number">7/20</div>
+        </div>
+
+        <div class="slide" id="slide8">
+            <div class="slide-content">
+                <div class="slide-title">Вставай страна огромная!</div>
+                <div class="slide-image">
+                    <p>Изображение: Плакат "Родина-мать зовет"</p>
+                </div>
+                <div class="slide-text">
+                    <p>Конечно, на защиту Родины и своей свободы, встали все люди нашей огромной Родины.</p>
+                    <p>Послушайте куплет песни, которая звучала в те годы.</p>
+                </div>
+                <div class="note">
+                    Источник для изображения: https://gallerix.org/storeroom/1973977528/N/1019548323/
+                </div>
+            </div>
+            <div class="slide-number">8/20</div>
+        </div>
+
+        <div class="slide" id="slide9">
+            <div class="slide-content">
+                <div class="slide-title">Мы врага отбросим</div>
+                <div class="slide-image">
+                    <p>Изображение: Советские солдаты в атаке</p>
+                </div>
+                <div class="slide-text">
+                    <p><b>Сигнал тревоги над страной<br>
+                    Подкрался враг, как вор ночной<br>
+                    Фашистов черная орда<br>
+                    Не вступит в наши города.</b></p>
+                </div>
+                <div class="note">
+                    Источник для изображения: https://tengrinews.kz/mixnews/30-znamenityih-snimkov-velikoy-otechestvennoy-voynyi-255013/
+                </div>
+            </div>
+            <div class="slide-number">9/20</div>
+        </div>
+
+        <div class="slide" id="slide10">
+            <div class="slide-content">
+                <div class="slide-title">Дети во время войны</div>
+                <div class="slide-image">
+                    <p>Изображение: Дети помогают взрослым в тылу</p>
+                </div>
+                <div class="slide-text">
+                    <p>Даже дети помогали взрослым одержать эту победу.</p>
+                    <p>Они трудились на полях в тылу, выращивали и собирали для солдат овощи, фрукты, хлеб, собирали даже колоски в поле и отправляли всё на фронт, а сами оставались голодными.</p>
+                </div>
+            </div>
+            <div class="slide-number">10/20</div>
+        </div>
+
+        <div class="slide" id="slide11">
+            <div class="slide-content">
+                <div class="slide-title">Танк "Малютка"</div>
+                <div class="slide-image">
+                    <p>Изображение: Танк "Малютка" и девочка</p>
+                </div>
+                <div class="slide-text">
+                    <p>А вот эта маленькая девочка отдала все свои деньги — она копила деньги на куклу, но вместо этого отдала их на постройку танка и написала письмо в газету. В этом письме она просила всех детей собрать кто сколько может денег, чтобы взрослые смогли построить танк. Танк был построен и его назвали "Малютка".</p>
+                </div>
+            </div>
+            <div class="slide-number">11/20</div>
+        </div>
+
+        <div class="slide" id="slide12">
+            <div class="slide-content">
+                <div class="slide-title">Катюша</div>
+                <div class="slide-image">
+                    <p>Изображение: Памятник "Катюше"</p>
+                </div>
+                <div class="slide-text">
+                    <p>Помогали им в бою и песни. С тех времён сохранилось много песен любим мы их и поём до сих пор. Все знаю песню про девушку, которая ждёт своего защитника.</p>
+                    <p>Звали эту девушку Катюша? И в нашем городе есть памятник этой девушке Катюше.</p>
+                </div>
+            </div>
+            <div class="slide-number">12/20</div>
+        </div>
+
+        <div class="slide" id="slide13">
+            <div class="slide-content">
+                <div class="slide-title">День Победы</div>
+                <div class="slide-image">
+                    <p>Аудио: Запись Левитана о победе</p>
+                </div>
+                <div class="slide-text">
+                    <p>Четыре года сражался наш народ с захватчиками, четыре года длилась эта война, все ждали только победы над врагом.</p>
+                    <p>И вот 9 мая из всех громкоговорителей, по всей стране люди услышали голос Левитана.</p>
+                </div>
+                <div class="note">
+                    Источник для аудио: https://pobeda.elar.ru/materials/audio/
+                </div>
+            </div>
+            <div class="slide-number">13/20</div>
+        </div>
+
+        <div class="slide" id="slide14">
+            <div class="slide-content">
+                <div class="slide-title">Флаг над Рейхстагом</div>
+                <div class="slide-image">
+                    <p>Изображение: Советский флаг на крыше Рейхстага</p>
+                </div>
+                <div class="slide-text">
+                    <p><b>Мы водрузили на Рейстаг<br>
+                    Наш советский красный флаг.<br>
+                    Этот флаг над миром реет,<br>
+                    Он сверкает и алеет.<br>
+                    Говорит всем людям флаг:<br>
+                    «Побеждён жестокий враг».</b></p>
+                </div>
+                <div class="note">
+                    Источник для изображения: https://waralbum.ru/6409/
+                </div>
+            </div>
+            <div class="slide-number">14/20</div>
+        </div>
+
+        <div class="slide" id="slide15">
+            <div class="slide-content">
+                <div class="slide-title">Единство народов</div>
+                <div class="slide-image">
+                    <p>Изображение: Слайд с представителями разных национальностей в советской армии</p>
+                </div>
+                <div class="slide-text">
+                    <p>В рядах советской армии сражались люди русской национальности, белорусы, украинцы, татары, грузины, эстонцы, латыши, калмыки, татары и многие, многие другие народы.</p>
+                </div>
+            </div>
+            <div class="slide-number">15/20</div>
+        </div>
+
+        <div class="slide" id="slide16">
+            <div class="slide-content">
+                <div class="slide-title">Памятник "Алёша" в Болгарии</div>
+                <div class="slide-image">
+                    <p>Изображение: Памятник "Алёша" в Болгарии</p>
+                </div>
+                <div class="slide-text">
+                    <p>Это самый известный памятник русскому солдату, которого звали Алёша — это памятник стоит в Болгарии.</p>
+                </div>
+                <div class="note">
+                    Источник для изображения: https://poisk.me/pamyatnik-alyosha-v-plovdive-bolgariya/
+                </div>
+            </div>
+            <div class="slide-number">16/20</div>
+        </div>
+
+        <div class="slide" id="slide17">
+            <div class="slide-content">
+                <div class="slide-title">Памятник советскому солдату в Берлине</div>
+                <div class="slide-image">
+                    <p>Изображение: Памятник советскому солдату с немецкой девочкой</p>
+                </div>
+                <div class="slide-text">
+                    <p>А этот памятник стоит в центре Берлина. Наш солдат держит на руках маленькую, спасённую им немецкую девочку.</p>
+                </div>
+            </div>
+            <div class="slide-number">17/20</div>
+        </div>
+
+        <div class="slide" id="slide18">
+            <div class="slide-content">
+                <div class="slide-title">Вечный огонь</div>
+                <div class="slide-image">
+                    <p>Изображение: Вечный огонь у Кремлевской стены</p>
+                </div>
+                <div class="slide-text">
+                    <p>В Москве — самом главном городе нашей страны, возведён памятник, который так и называется Памятник неизвестному солдату, у памятника горит вечный огонь.</p>
+                    <p>Давайте и мы с вами постоим тихо - тихо в память о тех людях, которые отдали свою жизнь за нашу с вами свободу и мирную жизнь.</p>
+                </div>
+            </div>
+            <div class="slide-number">18/20</div>
+        </div>
+
+        <div class="slide" id="slide19">
+            <div class="slide-content">
+                <div class="slide-title">Парад Победы</div>
+                <div class="slide-image">
+                    <p>Изображение: Современный парад на День Победы</p>
+                </div>
+                <div class="slide-text">
+                    <p>Каждый год 9 мая мы Празднуем великий День Победы, на площадях нашей страны проходит праздничный парад, звучат военные песни, люди приносят фотографии ветеранов ВОВ и тех кто погиб в годы ВОВ и тех кто остался жив.</p>
+                </div>
+            </div>
+            <div class="slide-number">19/20</div>
+        </div>
+
+        <div class="slide" id="slide20">
+            <div class="slide-content">
+                <div class="slide-title">С Днём Победы!</div>
+                <div class="slide-image">
+                    <p>Видео: Дети поют песню "Солнечный круг"</p>
+                </div>
+                <div class="slide-text">
+                    <p><b>За всё, что есть сейчас у нас,<br>
+                    За каждый наш счастливый час,<br>
+                    За то, что солнце светит нам,<br>
+                    Спасибо доблестным солдатам -<br>
+                    Нашей Родины сынам!</b></p>
+                </div>
+            </div>
+            <div class="slide-number">20/20</div>
+        </div>
+
+        <div class="navigation">
+            <button class="nav-button" id="prev-button">&larr; Назад</button>
+            <button class="nav-button" id="next-button">Вперед &rarr;</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 20;
+        
+        document.getElementById('prev-button').addEventListener('click', function() {
+            if (currentSlide > 1) {
+                document.getElementById(`slide${currentSlide}`).classList.remove('active');
+                currentSlide--;
+                document.getElementById(`slide${currentSlide}`).classList.add('active');
+            }
+        });
+        
+        document.getElementById('next-button').addEventListener('click', function() {
+            if (currentSlide < totalSlides) {
+                document.getElementById(`slide${currentSlide}`).classList.remove('active');
+                currentSlide++;
+                document.getElementById(`slide${currentSlide}`).classList.add('active');
+            }
+        });
+    </script>
+</body>
+</html>
