@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    command: >
+      bash -c "python manage.py runserver 0.0.0.0:8000"
+    depends_on:
+      - pgdb
+    restart: always
+    networks:
+      - djangonetwork
+  
+  pgdb:
+    build: ./db
+    environment:
+      - POSTGRES_DB=vehicle_accounting
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      - djangonetwork
+    volumes:
+      - ./vehicle_accounting_pgdb:/var/lib/postgresql/data/
+
+volumes:
+  vehicle_accounting_pgdb:
+
+networks:
+  djangonetwork:
+    driver: bridge

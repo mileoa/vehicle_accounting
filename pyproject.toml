@@ -20,4 +20,5 @@ dependencies = [
     "django-import-export>=4.3.7",
     "django-admin-rangefilter>=0.13.2",
     "gpxpy>=1.6.2",
+    "uwsgi>=2.0.29",
 ]
