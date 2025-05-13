@@ -81,7 +81,7 @@ function start_docker() {
     cd "$PROJECT_DIR"
     
     # Запускаем Docker Compose
-    docker-compose up -d --build
+    docker-compose up -d
     
     if [ $? -ne 0 ]; then
         log_message "error" "Не удалось запустить Docker контейнеры"
@@ -89,6 +89,20 @@ function start_docker() {
     fi
     
     log_message "info" "Docker контейнеры запущены успешно"
+}
+
+function check_docker_running() {
+    log_message "info" "Проверка состояния Docker..."
+    
+    # Проверяем, установлен ли Docker
+    check_requirement "docker" "Docker"
+    check_requirement "docker-compose" "Docker Compose"
+    
+    # Проверяем, запущен ли сервис Docker
+    if ! docker info &>/dev/null; then
+        log_message "error" "Docker не запущен. Запустите Docker и попробуйте снова.."
+        exit 1
+    fi
 }
 
 # Сбор статических файлов
@@ -110,7 +124,7 @@ function show_access_info() {
     
     log_message "info" "Деплой завершен успешно!"
     log_message "info" "Приложение доступно по адресу:"
-    log_message "info" "* Локально: http://localhost:8080"
+    log_message "info" "* Локально: http://localhost:8000"
     
     log_message "info" "Для остановки выполнить:"
     log_message "info" "cd $PROJECT_DIR && docker-compose down"

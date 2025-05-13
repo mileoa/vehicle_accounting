@@ -20,7 +20,7 @@ services:
     networks:
       - djangonetwork
     volumes:
-      - ./vehicle_accounting_pgdb:/var/lib/postgresql/data/
+      - ./vehicle_accounting_pgdb:/var/lib/postgresql/data
 
 volumes:
   vehicle_accounting_pgdb:
