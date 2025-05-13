@@ -136,6 +136,7 @@ function main() {
     
     # Выполнение основных шагов деплоя
     clone_or_update_repo
+    check_docker_running
     clean_docker
     start_docker
     collect_static
