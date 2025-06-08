@@ -3,6 +3,12 @@
 <html lang="ru-ru">
   <head>
     <title>{% block title %}{% endblock %}</title>
+    {% load static %}
+    <script src="{% static 'js/xhr_interceptor.js' %}"></script>
+    <script src="{% static 'js/request_client.js' %}"></script>
+    <script>
+        startLogging("{% url 'save_client_log' %}");
+    </script>
     {% load django_bootstrap5 %}
     {% bootstrap_css %}
     {% bootstrap_javascript %}

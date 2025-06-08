@@ -57,6 +57,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "vehicle_accounting.middleware.RequestTimeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -92,7 +93,7 @@ WSGI_APPLICATION = "vehicle_accounting.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
+        "ENGINE": "db_engine",
         "NAME": os.getenv("PGDB_NAME"),
         "USER": os.getenv("PGDB_USER"),
         "PASSWORD": os.getenv("PGDB_PASSWORD"),
@@ -159,3 +160,15 @@ DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE = 30
 
 GRAPHHOPPER_API_KEY = os.getenv("GRAPHHOPPER_API_KEY")
 GEOPIFY_API_KEY = os.getenv("GEOPIFY_API_KEY")
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.memcached.PyMemcacheCache",
+        "LOCATION": "127.0.0.1:11211",
+    }
+}
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+]

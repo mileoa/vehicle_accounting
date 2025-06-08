@@ -1,0 +1,31 @@
+{% extends "base.html"%}
+{% load django_bootstrap5 %}
+{% load static %}
+
+{% block content %}
+<h1 class="my-4">Информация о бренде</h1>
+<div class="card">
+    <div class="card-header bg-secondary text-white">
+      <h2>{{ brand.name }}</h2>
+    </div>
+    <div class="card-body bg-light">
+      <div class="container">
+        <div class="row p-1">
+          <div class="col fw-bold">Тип</div>
+          <div class="col">{{ brand.vehicle_type }}</div>
+        </div>
+        <div class="row p-1">
+          <div class="col fw-bold">Объем бака л</div>
+          <div class="col">{{ brand.fuel_tank_capacity_liters }}</div>
+        </div>
+        <div class="row p-1">
+          <div class="col fw-bold">Грузоподъемность кг</div>
+          <div class="col">{{ brand.load_capacity_kg }}</div>
+        </div>
+        <div class="row p-1">
+          <div class="col fw-bold">Количество мест</div>
+          <div class="col">{{ brand.seats_number }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

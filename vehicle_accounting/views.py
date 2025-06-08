@@ -8,11 +8,14 @@ from django.views.generic import TemplateView
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.http import HttpResponse, Http404
+from django.core.cache import cache
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
     PermissionRequiredMixin,
 )
+from django.template import loader
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import (
     ListView,
     CreateView,
@@ -124,6 +127,10 @@ class WebEnterpriseMixin(CommonWebMixin):
 
 class WebTripMixin(CommonWebMixin):
     model = Trip
+
+
+class WebBrandMixin(CommonWebMixin):
+    model = Brand
 
 
 class VehicleAccountingPaginatiion(PageNumberPagination):
@@ -274,6 +281,30 @@ class DetailVehicleView(WebVehicleMixin, DetailView):
             manager = self.request.user.manager
             return vehicle.enterprise in manager.enterprises.all()
         return False
+
+
+class DetailBrandView(WebBrandMixin, DetailView):
+
+    http_method_names = ["get"]
+    template_name = "brands/brand_detail.html"
+    permission_required = ["vehicle_accounting.view_brand"]
+    context_object_name = "brand"
+
+    def get_object(self, queryset=None):
+        brand_name = self.kwargs.get("name")
+        cache_key = f"brand_{brand_name}"
+
+        brand = cache.get(cache_key)
+        if brand is None:
+            brand = Brand.objects.get(name=brand_name)
+            cache.set(cache_key, brand, 60 * 30)
+
+        return brand
+
+    def has_permission(self):
+        return self.request.user.is_superuser or hasattr(
+            self.request.user, "manager"
+        )
 
 
 class IndexEnterpisesView(WebEnterpriseMixin, ListView):
@@ -626,6 +657,66 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
                 detail="You do not have permission to access this object."
             )
         return obj
+
+
+class VehicleMillageViewSet(viewsets.ViewSet):
+    permission_classes = [
+        IsAuthenticated,
+        HasRoleOrSuper("manager"),
+    ]
+
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return Vehicle.objects.all()
+        manager = Manager.objects.get(user=self.request.user)
+        return Vehicle.objects.filter(enterprise__in=manager.enterprises.all())
+
+    def list(self, request):
+        vehicle_id = request.query_params.get("vehicle_id", None)
+        period = request.query_params.get("period", None)
+        start_date = request.query_params.get("start_date", None)
+        end_date = request.query_params.get("end_date", None)
+        output_format = "json"
+
+        if not all([vehicle_id, period, start_date, end_date, output_format]):
+            raise rest_serializers.ValidationError(
+                "'Отсутствуют обязательные поля'"
+            )
+
+        if period not in ["day", "week", "month", "year"]:
+            raise rest_serializers.ValidationError("'Неверный период'")
+
+        try:
+            start_datetime = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_datedatime = datetime.strptime(end_date, "%Y-%m-%d").date()
+
+        except (ValueError, TypeError):
+            raise rest_serializers.ValidationError(
+                "'Неверный формат даты. Должен быть YYYY-MM-DD'"
+            )
+
+        vehicle = get_object_or_404(self.get_queryset(), pk=vehicle_id)
+        if not request.user.is_superuser:
+            manager = Manager.objects.get(user=self.request.user)
+            is_belong_to_manager = (
+                vehicle.enterprise.id
+                in manager.enterprises.values_list("id", flat=True)
+            )
+            if not is_belong_to_manager:
+                raise PermissionDenied(
+                    detail="У вас нет доступа к этому автомобилю"
+                )
+
+        report = VehicleMileageReport(
+            start_date=start_datetime,
+            end_date=end_datedatime,
+            period=period,
+            vehicle=vehicle,
+            enterprise=None,
+        )
+
+        report_data = report.generate()
+        return Response(report_data)
 
 
 class ActiveVehicleDriverViewSet(viewsets.ModelViewSet):
