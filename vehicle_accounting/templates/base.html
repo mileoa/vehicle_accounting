@@ -2,16 +2,13 @@
 <!DOCTYPE html>
 <html lang="ru-ru">
   <head>
-    <title>{% block title %}{% endblock %}</title>
-    {% load static %}
-    <script src="{% static 'js/xhr_interceptor.js' %}"></script>
-    <script src="{% static 'js/request_client.js' %}"></script>
-    <script>
-        startLogging("{% url 'save_client_log' %}");
-    </script>
-    {% load django_bootstrap5 %}
-    {% bootstrap_css %}
-    {% bootstrap_javascript %}
+      <title>{% block title %}{% endblock %}</title>
+      {% load static %}
+      {% load django_bootstrap5 %}
+      {% bootstrap_css %}
+      {% bootstrap_javascript %}
+      {% block head_additional %}
+      {% endblock %}
   </head>
   <body class="d-flex flex-column min-vh-100">  
     <nav class="navbar navbar-expand-lg navbar-light bg-light ms-3">

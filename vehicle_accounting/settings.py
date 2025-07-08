@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "django_extensions",
+    "channels",
     "rest_framework_gis",
     "django_bootstrap5",
     "import_export",
@@ -99,6 +100,9 @@ DATABASES = {
         "PASSWORD": os.getenv("PGDB_PASSWORD"),
         "HOST": os.getenv("PGDB_HOST"),
         "PORT": os.getenv("PGDB_PORT"),
+        "OPTIONS": {
+            "pool": True,
+        },
     }
 }
 
@@ -172,3 +176,9 @@ CACHES = {
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
+
+ASGI_APPLICATION = "asgi.application"
+CHANNEL_LAYERS = {
+    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+}

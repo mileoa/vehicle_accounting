@@ -52,7 +52,7 @@ from .views import (
     DriverAssignmentReportView,
     VehicleMillageViewSet,
     DetailBrandView,
-    save_client_log,
+    AsyncGPSReceiveView,
 )
 
 handler403 = "vehicle_accounting.views.custom_handler403"
@@ -175,5 +175,9 @@ urlpatterns = [
         DetailBrandView.as_view(),
         name="brands_detail",
     ),
-    path("save-client-log", save_client_log, name="save_client_log"),
+    path(
+        "api/gps/receive/",
+        AsyncGPSReceiveView.as_view(),
+        name="async_gps_receive",
+    ),
 ]

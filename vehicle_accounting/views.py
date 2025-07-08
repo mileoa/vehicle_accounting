@@ -1,19 +1,25 @@
 import ast
+from functools import wraps
 import uuid
+import asyncio
 import gpxpy
+from django.utils.decorators import method_decorator
 from django.shortcuts import get_object_or_404, render, HttpResponseRedirect
-from django.core.serializers import serialize
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
 from datetime import datetime, timedelta
 from django.views.generic import TemplateView
+from asgiref.sync import sync_to_async
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, JsonResponse
 from django.core.cache import cache
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
     PermissionRequiredMixin,
 )
+from django.db import transaction
 from django.template import loader
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import (
@@ -79,7 +85,45 @@ from .reports import (
     VehicleSalesReport,
     DriverAssignmentReport,
 )
+import hashlib
 
+def cache_response(timeout=300, key_prefix='drf_cache'):
+    """
+    Декоратор для кеширования ответов DRF ViewSet
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(self, request, *args, **kwargs):
+            # Проверяем кеш только для GET запросов
+            if request.method != 'GET':
+                response = view_func(self, request, *args, **kwargs)
+                return response
+            
+            # Создаем уникальный ключ кеша
+            cache_key_data = {
+                'view': self.__class__.__name__,
+                'action': getattr(self, 'action', 'unknown'),
+                'method': request.method,
+                'user_id': request.user.id if request.user.is_authenticated else 'anonymous',
+                'query_params': dict(request.query_params),
+                'args': args,
+                'kwargs': kwargs,
+            }
+            
+            cache_key = f"{key_prefix}:{hashlib.md5(json.dumps(cache_key_data, sort_keys=True).encode()).hexdigest()}"
+            cached_response = cache.get(cache_key)
+            if cached_response is not None:
+                return cached_response
+            
+            # Выполняем запрос
+            response = view_func(self, request, *args, **kwargs)
+            # Кешируем только успешные GET ответы
+            if request.method == 'GET' and response.status_code == 200:
+                cache.set(cache_key, response, timeout)
+            
+            return response
+        return wrapper
+    return decorator
 
 def custom_handler403(request, exception):
 
@@ -150,13 +194,17 @@ class IndexVehicleView(
     permission_required = ["vehicle_accounting.view_vehicle"]
 
     def get_queryset(self):
+        queryset = Vehicle.objects.select_related("brand", "enterprise")
+
         if self.request.user.is_superuser:
-            return Vehicle.objects.all()
+            return queryset
+
         if hasattr(self.request.user, "manager"):
-            manager = Manager.objects.get(user=self.request.user)
-            return Vehicle.objects.filter(
-                enterprise__in=manager.enterprises.all()
+            enterprise_ids = self.request.user.manager.enterprises.values_list(
+                "id", flat=True
             )
+            return queryset.filter(enterprise_id__in=enterprise_ids)
+
         return Vehicle.objects.none()
 
 
@@ -342,10 +390,9 @@ class IndexEnterpiseVehiclesView(WebVehicleMixin, ListView):
         return False
 
     def get_queryset(self):
-        if self.request.user.is_superuser:
-            return Vehicle.objects.all()
-        manager = Manager.objects.get(user=self.request.user)
-        return Vehicle.objects.filter(enterprise=self.kwargs["pk"])
+        queryset = Vehicle.objects.select_related("brand")
+        queryset = queryset.filter(enterprise=self.kwargs["pk"])
+        return queryset
 
 
 class TripMapView(WebTripMixin, View):
@@ -466,6 +513,11 @@ class VehicleViewSet(viewsets.ModelViewSet):
         HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
+
+    @method_decorator(cache_page(60*60*2))
+    @method_decorator(vary_on_cookie)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         if self.request.user.is_superuser:
@@ -601,6 +653,12 @@ class BrandViewSet(viewsets.ModelViewSet):
         HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
+    paginate_by = 25
+
+    @method_decorator(cache_page(60*60*2))
+    @method_decorator(vary_on_cookie)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
 class DriverViewSet(viewsets.ModelViewSet):
@@ -612,7 +670,13 @@ class DriverViewSet(viewsets.ModelViewSet):
         HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
+    paginate_by = 25
 
+    @method_decorator(cache_page(60*60*2))
+    @method_decorator(vary_on_cookie)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+    
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Driver.objects.all()
@@ -640,7 +704,12 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
         HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
+    paginate_by = 25
 
+    @method_decorator(cache_page(60*60*2))
+    @method_decorator(vary_on_cookie)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Enterprise.objects.all()
@@ -1053,25 +1122,39 @@ class ImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 data = self.parse_gpx(import_file)
             else:  # json
                 data = self.parse_json(import_file)
-
-            results = self.process_data(data, update_existing, request)
-
-            if results["success"]:
-                messages.success(request, results["message"])
-                context["message_type"] = "success"
-            else:
-                messages.error(request, results["message"])
-                context["message_type"] = "danger"
-            # return HttpResponseRedirect(self.success_url)
-            context["result_message"] = results["message"]
-            return render(request, self.template_name, context)
-
         except Exception as e:
-            error_message = f"Ошибка при импорте данных: {str(e)}"
+            error_message = f"Ошибка при разборе файла: {str(e)}"
             messages.error(request, error_message)
             context["result_message"] = error_message
             context["message_type"] = "danger"
             return render(request, self.template_name, context)
+
+        with transaction.atomic():
+            import_savepoint = transaction.savepoint()
+            results = self.process_data(data, update_existing, request)
+            if not results["success"]:
+                transaction.savepoint_rollback(import_savepoint)
+            else:
+                transaction.savepoint_commit(import_savepoint)
+
+        if results["success"]:
+            created_count = results["created_count"]
+            updated_count = results["updated_count"]
+            messages.success(
+                request,
+                f"Импорт завершен. Создано: {created_count}, Обновлено: {updated_count}",
+            )
+            context["message_type"] = "success"
+        else:
+            error_message = results["message"]
+            error_count = results["error_count"]
+            messages.error(
+                request,
+                f"Импорт не выполнен. Ошибок: {error_count}. {error_message}",
+            )
+            context["message_type"] = "danger"
+        context["result_message"] = results["message"]
+        return render(request, self.template_name, context)
 
     def get_context_data(self):
         return {}
@@ -1154,19 +1237,18 @@ class ImportEnterpriseView(ImportView):
         for row in data:
             try:
                 # Обязательные поля
-                enterprise_uuid = row.get("uuid")
                 name = row.get("name")
                 city = row.get("city")
                 phone = row.get("phone")
                 email = row.get("email")
 
                 # Необязательные поля
-                enterprise_id = row.get("id")
+                enterprise_uuid = row.get("uuid")
                 website = row.get("website", "")
                 timezone_str = row.get("timezone", "UTC")
 
                 # Проверка обязательных полей
-                if not all([enterprise_uuid, name, city, phone, email]):
+                if not all([name, city, phone, email]):
                     error_count += 1
                     errors.append(
                         f"Отсутствуют обязательные поля для предприятия: {row}"
@@ -1174,9 +1256,11 @@ class ImportEnterpriseView(ImportView):
                     continue
 
                 # Проверка существования предприятия
-                exists = Enterprise.objects.filter(
-                    uuid=enterprise_uuid
-                ).exists()
+                exists = False
+                if enterprise_uuid:
+                    exists = Enterprise.objects.filter(
+                        uuid=enterprise_uuid
+                    ).exists()
 
                 if exists and update_existing:
                     enterprise = Enterprise.objects.get(uuid=enterprise_uuid)
@@ -1189,8 +1273,9 @@ class ImportEnterpriseView(ImportView):
                     enterprise.save()
                     updated_count += 1
                 elif not exists:
+                    new_enterprise_uuid = uuid.uuid4()
                     Enterprise.objects.create(
-                        uuid=enterprise_uuid,
+                        uuid=new_enterprise_uuid,
                         name=name,
                         city=city,
                         phone=phone,
@@ -1205,7 +1290,10 @@ class ImportEnterpriseView(ImportView):
 
         result = {
             "success": error_count == 0,
-            "message": f"Импорт завершен. Создано: {created_count}, Обновлено: {updated_count}, Ошибок: {error_count}",
+            "message": "",
+            "created_count": created_count,
+            "updated_count": updated_count,
+            "error_count": error_count,
         }
 
         if errors:
@@ -1905,3 +1993,124 @@ class DriverAssignmentReportView(ReportBaseView, TemplateView):
         )
 
         return context
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class AsyncGPSReceiveView(View):
+    """Асинхронный Class-Based View для приема GPS данных"""
+
+    async def post(self, request):
+        """Асинхронный POST метод"""
+        try:
+            # Парсим данные из запроса
+            try:
+                gps_data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return JsonResponse(
+                    {"status": "error", "message": "Некорректный JSON"},
+                    status=400,
+                    json_dumps_params={"ensure_ascii": False},
+                )
+
+            # Асинхронная валидация данных
+            validation_result = await self.validate_gps_data(gps_data)
+            if not validation_result["valid"]:
+                return JsonResponse(
+                    {"status": "error", "message": validation_result["error"]},
+                    status=400,
+                    json_dumps_params={"ensure_ascii": False},
+                )
+
+            # Запускаем обработку в фоновом режиме
+            asyncio.create_task(self.process_gps_data_async(gps_data))
+
+            # Сразу отвечаем клиенту
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": "GPS данные приняты для обработки",
+                    "vehicle_id": gps_data["vehicle_id"],
+                    "received_at": datetime.now().isoformat(),
+                },
+                json_dumps_params={"ensure_ascii": False},
+            )
+
+        except Exception:
+            return JsonResponse(
+                {"status": "error", "message": "Внутренняя ошибка сервера"},
+                status=500,
+                json_dumps_params={"ensure_ascii": False},
+            )
+
+    async def validate_gps_data(self, gps_data):
+        """Асинхронная валидация GPS данных"""
+        # Проверка обязательных полей
+        required_fields = ["vehicle_id", "latitude", "longitude"]
+        if not all(field in gps_data for field in required_fields):
+            return {
+                "valid": False,
+                "error": f"Отсутствуют обязательные поля: {required_fields}",
+            }
+
+        # Проверка типов данных
+        try:
+            vehicle_id = int(gps_data["vehicle_id"])
+            latitude = float(gps_data["latitude"])
+            longitude = float(gps_data["longitude"])
+        except (ValueError, TypeError):
+            return {"valid": False, "error": "Некорректные типы данных"}
+
+        # Асинхронная проверка существования машины
+        vehicle_exists = await sync_to_async(
+            Vehicle.objects.filter(id=vehicle_id).exists
+        )()
+
+        if not vehicle_exists:
+            return {
+                "valid": False,
+                "error": "Не существует машины с заданным vehicle_id",
+            }
+
+        # Проверка диапазона координат
+        if latitude < -90 or latitude > 90:
+            return {
+                "valid": False,
+                "error": f"Широта должна быть в диапазоне -90..90, получено: {latitude}",
+            }
+        if longitude < -180 or longitude > 180:
+            return {
+                "valid": False,
+                "error": f"Долгота должна быть в диапазоне -180..180, получено: {longitude}",
+            }
+
+        return {"valid": True}
+
+    async def process_gps_data_async(self, gps_data):
+        """Асинхронная обработка GPS данных"""
+        await asyncio.sleep(60)
+        try:
+            await self.save_gps_point_async(gps_data)
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при сохранении GPS точки: {e}")
+
+    async def save_gps_point_async(self, gps_data):
+        """Асинхронное сохранение GPS точки"""
+        try:
+            vehicle = await sync_to_async(Vehicle.objects.get)(
+                id=gps_data["vehicle_id"]
+            )
+
+            # Создаем точку
+            point = Point(
+                float(gps_data["longitude"]), float(gps_data["latitude"])
+            )
+
+            # Создаем и сохраняем GPS точку асинхронно
+            gps_point = VehicleGPSPoint(vehicle=vehicle, point=point)
+            await sync_to_async(gps_point.save)()
+
+        except Vehicle.DoesNotExist:
+            print(f"Машина с ID {gps_data['vehicle_id']} не найдена")
+        except Exception as e:
+            print(f"Ошибка при сохранении GPS точки: {e}")
