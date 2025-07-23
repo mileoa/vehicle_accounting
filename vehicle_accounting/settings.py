@@ -33,7 +33,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("IS_DEBUG", "False").lower() in ["true"]
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "host.docker.internal"]
 
 
 # Application definition
@@ -157,10 +157,6 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "vehicle_accounting.exceptions.custom_exception_handler",
 }
-
-
-# Days to move vehicle GPS points to archive
-DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE = 30
 
 GRAPHHOPPER_API_KEY = os.getenv("GRAPHHOPPER_API_KEY")
 GEOPIFY_API_KEY = os.getenv("GEOPIFY_API_KEY")

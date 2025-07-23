@@ -16,7 +16,6 @@ from .models import (
     Enterprise,
     Trip,
     VehicleGPSPoint,
-    VehicleGPSPointArchive,
     Driver,
     VehicleDriver,
 )
@@ -109,19 +108,8 @@ class BaseReport:
             ).order_by("created_at")
         )
 
-        # Add archive points if needed
-        archive_points = list(
-            VehicleGPSPointArchive.objects.filter(
-                vehicle=trip.vehicle,
-                created_at__gte=trip.start_time,
-                created_at__lte=trip.end_time,
-            ).order_by("created_at")
-        )
-
         # Combine and sort by created_at
-        all_points = sorted(
-            gps_points + archive_points, key=lambda p: p.created_at
-        )
+        all_points = sorted(gps_points, key=lambda p: p.created_at)
 
         # Calculate total distance
         total_distance = 0

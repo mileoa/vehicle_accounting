@@ -8,7 +8,6 @@ from .models import (
     Driver,
     VehicleDriver,
     VehicleGPSPoint,
-    VehicleGPSPointArchive,
     Trip,
 )
 from django.contrib.auth.admin import UserAdmin
@@ -245,24 +244,6 @@ class VehicleGPSPointAdmin(admin.ModelAdmin):
     formated_created_at.short_description = "Время"
 
 
-class VehicleGPSPointArchiveAdmin(admin.ModelAdmin):
-    list_display = ["vehicle", "point", "formated_created_at"]
-
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        manager = Manager.objects.get(user=request.user)
-        return qs.filter(vehicle__enterprise__in=manager.enterprises.all())
-
-    def formated_created_at(self, obj):
-        if obj.created_at:
-            return obj.created_at.strftime("%Y-%m-%d %H:%M:%S")
-        return None
-
-    formated_created_at.short_description = "Время"
-
-
 class TripResource(resources.ModelResource):
     uuid = fields.Field(column_name="uuid", attribute="uuid")
 
@@ -355,5 +336,4 @@ admin.site.register(Driver, DriverAdmin)
 admin.site.register(CustomUser, UserAdmin)
 admin.site.register(Manager, ManagerAdmin)
 admin.site.register(VehicleGPSPoint, VehicleGPSPointAdmin)
-admin.site.register(VehicleGPSPointArchive, VehicleGPSPointArchiveAdmin)
 admin.site.register(Trip, TripAdmin)

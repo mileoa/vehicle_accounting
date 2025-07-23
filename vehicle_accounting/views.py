@@ -53,7 +53,6 @@ import csv
 import json
 from .admin import VehicleResource, EnterpriseResource, TripResource
 from .utils.time import str_iso_datetime_to_timezone
-from .settings import DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE
 from .models import (
     Vehicle,
     Brand,
@@ -62,7 +61,6 @@ from .models import (
     VehicleDriver,
     Manager,
     VehicleGPSPoint,
-    VehicleGPSPointArchive,
     Trip,
 )
 from .serializers import (
@@ -72,9 +70,7 @@ from .serializers import (
     EnterpriseSerializer,
     ActiveVehicleDriverSerializer,
     VehicleGPSPointSerializer,
-    VehicleGPSPointArchiveSerializer,
     GeoJSONVehicleGPSPointSerializer,
-    GeoJSONGPSPointArchiveSerializer,
     TripSerializer,
 )
 from .permissions import HasRoleOrSuper
@@ -87,43 +83,52 @@ from .reports import (
 )
 import hashlib
 
-def cache_response(timeout=300, key_prefix='drf_cache'):
+
+def cache_response(timeout=300, key_prefix="drf_cache"):
     """
     Декоратор для кеширования ответов DRF ViewSet
     """
+
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(self, request, *args, **kwargs):
             # Проверяем кеш только для GET запросов
-            if request.method != 'GET':
+            if request.method != "GET":
                 response = view_func(self, request, *args, **kwargs)
                 return response
-            
+
             # Создаем уникальный ключ кеша
             cache_key_data = {
-                'view': self.__class__.__name__,
-                'action': getattr(self, 'action', 'unknown'),
-                'method': request.method,
-                'user_id': request.user.id if request.user.is_authenticated else 'anonymous',
-                'query_params': dict(request.query_params),
-                'args': args,
-                'kwargs': kwargs,
+                "view": self.__class__.__name__,
+                "action": getattr(self, "action", "unknown"),
+                "method": request.method,
+                "user_id": (
+                    request.user.id
+                    if request.user.is_authenticated
+                    else "anonymous"
+                ),
+                "query_params": dict(request.query_params),
+                "args": args,
+                "kwargs": kwargs,
             }
-            
+
             cache_key = f"{key_prefix}:{hashlib.md5(json.dumps(cache_key_data, sort_keys=True).encode()).hexdigest()}"
             cached_response = cache.get(cache_key)
             if cached_response is not None:
                 return cached_response
-            
+
             # Выполняем запрос
             response = view_func(self, request, *args, **kwargs)
             # Кешируем только успешные GET ответы
-            if request.method == 'GET' and response.status_code == 200:
+            if request.method == "GET" and response.status_code == 200:
                 cache.set(cache_key, response, timeout)
-            
+
             return response
+
         return wrapper
+
     return decorator
+
 
 def custom_handler403(request, exception):
 
@@ -447,14 +452,8 @@ class TripMapView(WebTripMixin, View):
                 created_at__lte=trip.end_time,
             ).order_by("created_at")
 
-            archived_points = VehicleGPSPointArchive.objects.filter(
-                vehicle=trip.vehicle,
-                created_at__gte=trip.start_time,
-                created_at__lte=trip.end_time,
-            ).order_by("created_at")
-
             # Объединяем текущие и архивные точки
-            all_trip_points = list(current_points) + list(archived_points)
+            all_trip_points = list(current_points)
             all_trip_points.sort(key=lambda x: x.created_at)
 
             if not all_trip_points:
@@ -514,7 +513,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
         DjangoModelPermissions,
     ]
 
-    @method_decorator(cache_page(60*60*2))
+    @method_decorator(cache_page(60 * 60 * 2))
     @method_decorator(vary_on_cookie)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
@@ -655,7 +654,7 @@ class BrandViewSet(viewsets.ModelViewSet):
     ]
     paginate_by = 25
 
-    @method_decorator(cache_page(60*60*2))
+    @method_decorator(cache_page(60 * 60 * 2))
     @method_decorator(vary_on_cookie)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
@@ -672,11 +671,11 @@ class DriverViewSet(viewsets.ModelViewSet):
     ]
     paginate_by = 25
 
-    @method_decorator(cache_page(60*60*2))
+    @method_decorator(cache_page(60 * 60 * 2))
     @method_decorator(vary_on_cookie)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
-    
+
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Driver.objects.all()
@@ -706,10 +705,11 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
     ]
     paginate_by = 25
 
-    @method_decorator(cache_page(60*60*2))
+    @method_decorator(cache_page(60 * 60 * 2))
     @method_decorator(vary_on_cookie)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Enterprise.objects.all()
@@ -869,36 +869,6 @@ class VehicleGPSPointViewSet(viewsets.ViewSet):
             ).data
         else:
             data = VehicleGPSPointSerializer(current_points, many=True).data
-
-        start_date_aware = timezone.make_aware(
-            datetime.fromisoformat(start_date)
-        )
-        is_include_archive_date = start_date_aware < (
-            timezone.now()
-            - timezone.timedelta(days=DAYS_TO_MOVE_VEHICLE_GPS_TO_ARCHIVE)
-        )
-        if is_include_archive_date and output_format == "geojson":
-            archived_points = VehicleGPSPointArchive.objects.filter(
-                vehicle_id=vehicle_id,
-                created_at__date__gte=start_date,
-                created_at__date__lte=end_date,
-            )
-            data["features"].extend(
-                GeoJSONGPSPointArchiveSerializer(
-                    archived_points, many=True
-                ).data["features"]
-            )
-        elif is_include_archive_date:
-            archived_points = VehicleGPSPointArchive.objects.filter(
-                vehicle_id=vehicle_id,
-                created_at__date__gte=start_date,
-                created_at__date__lte=end_date,
-            )
-            archive_vehicle_gps_point_serializer = (
-                VehicleGPSPointArchiveSerializer(archived_points, many=True)
-            )
-            data += archive_vehicle_gps_point_serializer.data
-
         return Response(data)
 
 
@@ -996,7 +966,6 @@ class TripGPSPointViewSet(viewsets.ViewSet):
             return Response([{}])
 
         query_current_points = VehicleGPSPoint.objects.none()
-        query_archived_points = VehicleGPSPointArchive.objects.none()
         for trip in trips:
 
             query_current_points = (
@@ -1008,18 +977,7 @@ class TripGPSPointViewSet(viewsets.ViewSet):
                 )
             )
 
-            query_archived_points = (
-                query_archived_points
-                | VehicleGPSPointArchive.objects.filter(
-                    vehicle_id=vehicle_id,
-                    created_at__gte=trip.start_time,
-                    created_at__lte=trip.end_time,
-                )
-            )
-
-        query_all_tracks_points = query_current_points.union(
-            query_archived_points
-        ).order_by("created_at")
+        query_all_tracks_points = query_current_points.order_by("created_at")
 
         if output_format == "geojson":
             result_points = GeoJSONVehicleGPSPointSerializer(

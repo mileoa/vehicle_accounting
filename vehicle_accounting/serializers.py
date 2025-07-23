@@ -9,7 +9,6 @@ from .models import (
     Enterprise,
     VehicleDriver,
     VehicleGPSPoint,
-    VehicleGPSPointArchive,
     Trip,
 )
 from .services import get_address_from_coordinates
@@ -99,54 +98,11 @@ class VehicleGPSPointSerializer(serializers.ModelSerializer):
         return created_at
 
 
-class VehicleGPSPointArchiveSerializer(serializers.ModelSerializer):
-    created_at = serializers.SerializerMethodField()
-
-    class Meta:
-        model = VehicleGPSPointArchive
-        fields = ["vehicle", "point", "created_at"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.timezone_cache = None
-
-    def get_created_at(self, obj):
-        if self.timezone_cache is None:
-            self.timezone_cache = pytz.timezone(obj.vehicle.enterprise.timezone)
-        created_at = obj.created_at
-        if created_at is None:
-            return created_at
-        created_at = created_at.astimezone(self.timezone_cache)
-        return created_at
-
-
 class GeoJSONVehicleGPSPointSerializer(GeoFeatureModelSerializer):
     created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = VehicleGPSPoint
-        geo_field = "point"
-        fields = ["vehicle", "created_at"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.timezone_cache = None
-
-    def get_created_at(self, obj):
-        if self.timezone_cache is None:
-            self.timezone_cache = pytz.timezone(obj.vehicle.enterprise.timezone)
-        created_at = obj.created_at
-        if created_at is None:
-            return created_at
-        created_at = created_at.astimezone(self.timezone_cache)
-        return created_at
-
-
-class GeoJSONGPSPointArchiveSerializer(GeoFeatureModelSerializer):
-    created_at = serializers.SerializerMethodField()
-
-    class Meta:
-        model = VehicleGPSPointArchive
         geo_field = "point"
         fields = ["vehicle", "created_at"]
 

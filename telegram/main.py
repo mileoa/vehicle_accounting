@@ -1,5 +1,9 @@
 import logging
 import aiohttp
+import json
+import threading
+from datetime import datetime
+from kafka import KafkaConsumer
 from telegram import Update
 from telegram.ext import (
     filters,
@@ -255,10 +259,102 @@ async def make_request_with_jwt(update: Update, url, attempts_remains=2):
             }
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=update.message.text
-    )
+def format_speed_alert(alert_data: dict) -> str:
+    """
+    Форматирование алерта о превышении скорости
+    """
+    try:
+        # Парсим время
+        timestamp = datetime.fromisoformat(
+            alert_data["timestamp"].replace("Z", "+00:00")
+        )
+        formatted_time = timestamp.strftime("%d.%m.%Y %H:%M:%S")
+
+        # Координаты
+        location = alert_data["location"]
+        lat = location["latitude"]
+        lng = location["longitude"]
+
+        # Превышение
+        current_speed = alert_data["current_speed"]
+        speed_limit = alert_data["speed_limit"]
+        overspeed = current_speed - speed_limit
+
+        message = f"""🚨 *ПРЕВЫШЕНИЕ СКОРОСТИ!*
+
+🚗 Автомобиль: #{alert_data["vehicle_id"]}
+⚡ Скорость: {current_speed} км/ч  
+⚠️ Лимит: {speed_limit} км/ч
+📈 Превышение: +{overspeed:.1f} км/ч
+
+📍 Координаты: {lat:.6f}, {lng:.6f}
+🕐 Время: {formatted_time}
+
+[📍 Показать на карте](https://www.google.com/maps?q={lat},{lng})"""
+
+        return message
+
+    except Exception as e:
+        print(f"Error formatting alert: {e}")
+        return f"ПРЕВЫШЕНИЕ СКОРОСТИ! Автомобиль #{alert_data.get('vehicle_id', 'Unknown')}"
+
+
+async def send_speed_alert_to_subscribers(application, alert_data):
+    """
+    Отправка алерта всем авторизованным пользователям
+    """
+    message = format_speed_alert(alert_data)
+
+    if not authorized_users_jwt:
+        return
+
+    for user_id in list(authorized_users_jwt.keys()):
+        try:
+            await application.bot.send_message(
+                chat_id=user_id, text=message, parse_mode="Markdown"
+            )
+            print(f"📱 Speed alert sent to user {user_id}")
+        except Exception as e:
+            print(f"Error sending alert to user {user_id}: {e}")
+
+
+def consume_speed_alerts(application):
+    """
+    Kafka consumer для speed alerts в отдельном потоке
+    """
+    try:
+        consumer = KafkaConsumer(
+            "speed_alerts",
+            bootstrap_servers=["localhost:9092"],
+            value_deserializer=lambda x: json.loads(x.decode("utf-8")),
+            group_id="telegram_notifications",
+            auto_offset_reset="latest",
+        )
+
+        print("Telegram bot listening for speed alerts...")
+
+        for message in consumer:
+            try:
+                alert_data = message.value
+                print(
+                    f"Received speed alert for vehicle {alert_data['vehicle_id']}"
+                )
+
+                # Отправить уведомление асинхронно
+                import asyncio
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(
+                    send_speed_alert_to_subscribers(application, alert_data)
+                )
+                loop.close()
+
+            except Exception as e:
+                print(f"Error processing speed alert: {e}")
+
+    except Exception as e:
+        print(f"Kafka consumer error: {e}")
 
 
 if __name__ == "__main__":
@@ -273,5 +369,10 @@ if __name__ == "__main__":
     application.add_handler(login_handler)
     application.add_handler(logout_handler)
     application.add_handler(vehicle_millage_handler)
+
+    kafka_thread = threading.Thread(
+        target=consume_speed_alerts, args=(application,), daemon=True
+    )
+    kafka_thread.start()
 
     application.run_polling()

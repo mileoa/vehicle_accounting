@@ -75,7 +75,7 @@ class Enterprise(models.Model):
     website = models.URLField(blank=True, verbose_name="веб-сайт")
     timezone = models.CharField(
         max_length=50,
-        choices=[(tz, tz) for tz in available_timezones()],
+        choices=sorted([(tz, tz) for tz in available_timezones()]),
         default=settings.TIME_ZONE,
     )
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -294,20 +294,6 @@ class VehicleGPSPoint(models.Model):
 
     def __str__(self):
         return f"({self.point.x}, {self.point.y})"
-
-
-class VehicleGPSPointArchive(models.Model):
-    vehicle = models.ForeignKey(
-        Vehicle, on_delete=models.CASCADE, related_name="archive_gps_points"
-    )
-    point = gis_models.PointField(verbose_name="Местоположение")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Время")
-
-    class Meta:
-        indexes = [
-            models.Index(fields=["vehicle", "created_at"]),
-            models.Index(fields=["point"]),
-        ]
 
 
 class Trip(models.Model):
