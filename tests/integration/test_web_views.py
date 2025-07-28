@@ -385,7 +385,7 @@ class TestTripMapView:
 
         response = web_client.post(url, data)
 
-        assert response.status_code == 201
+        assert response.status_code == 200
         assert "map_html" in response.context
 
     def test_trip_map_no_trips_selected(self, web_client):
