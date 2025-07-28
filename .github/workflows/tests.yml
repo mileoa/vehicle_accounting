@@ -81,7 +81,15 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        
+  
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          binutils libproj-dev gdal-bin libgdal-dev \
+          sqlite3 libsqlite3-mod-spatialite \
+          gcc gettext
+
     - name: Install Python dependencies
       run: |
         pip install -r requirements.txt
