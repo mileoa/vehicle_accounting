@@ -73,7 +73,11 @@ jobs:
     - name: Install Cypress
       run: |
         npm install cypress
-  
+
+    - name: Run migrations
+      run: |
+        python manage.py migrate --settings=vehicle_accounting.test_settings
+
     - name: Start Django server
       run: |
         python manage.py runserver --settings=vehicle_accounting.test_settings &
