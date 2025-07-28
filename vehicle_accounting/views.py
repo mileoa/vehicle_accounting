@@ -14,7 +14,7 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.http import HttpResponse, Http404, JsonResponse
 from django.core.cache import cache
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
     PermissionRequiredMixin,

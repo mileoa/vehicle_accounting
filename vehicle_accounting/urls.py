@@ -22,6 +22,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from django.contrib.auth.views import LogoutView
 from .views import (
     CustomLoginView,
     VehicleViewSet,
@@ -83,6 +84,7 @@ router.register(
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("login/", CustomLoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
     path("", IndexEnterpisesView.as_view(), name="index"),
     path("vehicles/", IndexVehicleView.as_view(), name="vehicles_list"),
     path(
