@@ -42,7 +42,6 @@ jobs:
           gdal-bin \
           libgdal-dev \
           spatialite-bin \
-          libspatialite7 \
           libspatialite-dev \
           sqlite3 \
           gcc \
