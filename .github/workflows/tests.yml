@@ -76,10 +76,22 @@ jobs:
   
     - name: Start Django server
       run: |
-        python manage.py migrate --settings=vehicle_accounting.test_settings
         python manage.py runserver --settings=vehicle_accounting.test_settings &
         sleep 10  # Ждем запуска сервера
-        
+
+    - name: Create manager user
+      run: |
+        python manage.py shell --settings=vehicle_accounting.test_settings -c "
+        from django.contrib.auth import get_user_model;
+        from vehicle_accounting.models import Manager, Enterprise;
+        User = get_user_model();
+        if not User.objects.filter(username='Manger_Alex').exists():
+            user = User.objects.create_superuser('Manger_Alex', 'admin@test.com', 'qwer1234qwer');
+            manager = Manager.objects.create(user=user);
+            enterprise = Enterprise.objects.first();
+            if enterprise:
+                manager.enterprises.add(enterprise)
+        "    
     - name: Run Cypress tests
       run: |
         npx cypress run
