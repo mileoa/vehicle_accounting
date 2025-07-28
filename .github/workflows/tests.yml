@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  integration_test:
+  tests:
     runs-on: ubuntu-latest
     
     services:
@@ -61,7 +61,7 @@ jobs:
       run: |
         python manage.py collectstatic --noinput
 
-    - name: Run tests
+    - name: Run integration tests
       run: |
         pytest --ds=vehicle_accounting.test_settings tests/
 
@@ -79,20 +79,29 @@ jobs:
         python manage.py runserver --settings=vehicle_accounting.test_settings &
         sleep 10  # Ждем запуска сервера
 
+    - name: Create superuser
+      run: |
+        python manage.py shell --settings=vehicle_accounting.test_settings -c "
+        from django.contrib.auth import get_user_model;
+        User = get_user_model();
+        if not User.objects.filter(username='admin').exists():
+            User.objects.create_superuser('admin', 'admin@test.com', 'admin')
+        "
+
     - name: Create manager user
       run: |
         python manage.py shell --settings=vehicle_accounting.test_settings -c "
         from django.contrib.auth import get_user_model;
         from vehicle_accounting.models import Manager, Enterprise;
         User = get_user_model();
-        if not User.objects.filter(username='Manger_Alex').exists():
-            user = User.objects.create_superuser('Manger_Alex', 'admin@test.com', 'qwer1234qwer');
+        if not User.objects.filter(username='Manager_Alex').exists():
+            user = User.objects.create_superuser('Manager_Alex', 'test@test.com', 'qwer1234qwer');
             manager = Manager.objects.create(user=user);
             enterprise = Enterprise.objects.first();
             if enterprise:
                 manager.enterprises.add(enterprise)
         "    
-    - name: Run Cypress tests
+    - name: Run e2e tests
       run: |
         npx cypress run
       env:
