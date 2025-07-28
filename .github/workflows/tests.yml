@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 jobs:
   tests:
@@ -83,7 +83,7 @@ jobs:
 
     - name: Install Cypress
       run: |
-        npm install cypress
+        npm install 
 
     - name: Run migrations
       run: |
