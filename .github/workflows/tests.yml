@@ -65,9 +65,39 @@ jobs:
       run: |
         pytest --ds=vehicle_accounting.test_settings tests/
 
-    - name: Cypress run
-      uses: cypress-io/github-action@v6
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: integration_test 
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        start: python manage.py runserver --settings=vehicle_accounting.test_settings
-        wait-on: 'http://localhost:8000'
-        wait-on-timeout: 120
+        python-version: '3.11'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install Python dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Install Cypress
+      run: |
+        npm ci  # или npm install
+        
+    - name: Start Django server
+      run: |
+        python manage.py migrate --settings=vehicle_accounting.test_settings
+        python manage.py runserver --settings=vehicle_accounting.test_settings &
+        sleep 5  # Ждем запуска сервера
+        
+    - name: Run Cypress tests
+      run: |
+        npx cypress run
+      env:
+        CYPRESS_BASE_URL: http://localhost:8000
