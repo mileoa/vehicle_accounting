@@ -8,7 +8,7 @@ CACHES = {
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.spatialite",
-        "NAME": ":memory:",
+        'NAME': 'test_db.sqlite3"
     }
 }
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
