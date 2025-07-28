@@ -52,9 +52,9 @@ jobs:
         echo "DJANGO_SECRET_KEY=django-insecure-test-key-for-ci" >> $GITHUB_ENV
         echo "GRAPHHOPPER_API_KEY=" >> $GITHUB_ENV
         echo "GEOPIFY_API_KEY=" >> $GITHUB_ENV
-        echo "admin" >> $DJANGO_SUPERUSER_PASSWORD
-        echo "admin" >> $DJANGO_SUPERUSER_USERNAME
-        echo "admin@admin.admin" >> $DJANGO_SUPERUSER_EMAIL
+        echo "DJANGO_SUPERUSER_PASSWORD=admin" >> $GITHUB_ENV
+        echo "DJANGO_SUPERUSER_USERNAME=admin" >> $GITHUB_ENV
+        echo "DJANGO_SUPERUSER_EMAIL=admin@admin.admin" >> $GITHUB_ENV
 
     - name: Run migrations
       run: |
