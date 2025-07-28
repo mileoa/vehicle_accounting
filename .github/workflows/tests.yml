@@ -61,7 +61,7 @@ jobs:
 
     - name: Run migrations
       run: |
-        python manage.py migrate
+        python manage.py migrate --settings=vehicle_accounting.test_settings
 
     - name: Collect static files
       run: |
