@@ -83,7 +83,7 @@ jobs:
 
     - name: Install Cypress
       run: |
-        npm install 
+        npm install cypress
 
     - name: Run migrations
       run: |
