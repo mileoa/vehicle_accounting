@@ -65,9 +65,9 @@ jobs:
       run: |
         pytest --ds=vehicle_accounting.test_settings tests/
 
-      - name: Cypress run
-      uses: cypress-io/github-action@v6
-      with:
-        start: python manage.py runserver --settings=vehicle_accounting.test_settings
-        wait-on: 'http://localhost:8000'
-        wait-on-timeout: 120
+    - name: Cypress run
+    uses: cypress-io/github-action@v6
+    with:
+      start: python manage.py runserver --settings=vehicle_accounting.test_settings
+      wait-on: 'http://localhost:8000'
+      wait-on-timeout: 120
