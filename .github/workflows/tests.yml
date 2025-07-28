@@ -52,6 +52,9 @@ jobs:
         echo "DJANGO_SECRET_KEY=django-insecure-test-key-for-ci" >> $GITHUB_ENV
         echo "GRAPHHOPPER_API_KEY=" >> $GITHUB_ENV
         echo "GEOPIFY_API_KEY=" >> $GITHUB_ENV
+        echo "admin" >> $DJANGO_SUPERUSER_PASSWORD
+        echo "admin" >> $DJANGO_SUPERUSER_USERNAME
+        echo "admin@admin.admin" >> $DJANGO_SUPERUSER_EMAIL
 
     - name: Run migrations
       run: |
@@ -85,26 +88,7 @@ jobs:
 
     - name: Create superuser
       run: |
-        python manage.py shell --settings=vehicle_accounting.test_settings -c "
-        from django.contrib.auth import get_user_model;
-        User = get_user_model();
-        if not User.objects.filter(username='admin').exists():
-            User.objects.create_superuser('admin', 'admin@test.com', 'admin')
-        "
-
-    - name: Create manager user
-      run: |
-        python manage.py shell --settings=vehicle_accounting.test_settings -c "
-        from django.contrib.auth import get_user_model;
-        from vehicle_accounting.models import Manager, Enterprise;
-        User = get_user_model();
-        if not User.objects.filter(username='Manager_Alex').exists():
-            user = User.objects.create_superuser('Manager_Alex', 'test@test.com', 'qwer1234qwer');
-            manager = Manager.objects.create(user=user);
-            enterprise = Enterprise.objects.first();
-            if enterprise:
-                manager.enterprises.add(enterprise)
-        "    
+        python manage.py createsuperuser --noinput
     - name: Run e2e tests
       run: |
         npx cypress run
