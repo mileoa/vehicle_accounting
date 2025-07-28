@@ -11,3 +11,7 @@ DATABASES = {
         "NAME": ":memory:",
     }
 }
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+GRAPHHOPPER_API_KEY = "test_key"
+GEOPIFY_API_KEY = "test_key"
+ALLOWED_HOSTS = ["*"]

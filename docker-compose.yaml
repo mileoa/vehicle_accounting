@@ -10,6 +10,8 @@ services:
     restart: always
     networks:
       - djangonetwork
+    volumes:
+      - ./vehicle_accounting/:/app/vehicle_accounting/
   
   pgdb:
     build: ./db
@@ -24,118 +26,119 @@ services:
 
 
 
-  # Zookeeper для Kafka
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-logs:/var/lib/zookeeper/log
-    networks:
-      - djangonetwork
+  # # Zookeeper для Kafka
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.4.0
+  #   container_name: zookeeper
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   volumes:
+  #     - zookeeper-data:/var/lib/zookeeper/data
+  #     - zookeeper-logs:/var/lib/zookeeper/log
+  #   networks:
+  #     - djangonetwork
 
-  # Kafka брокер
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-      - "9093:9093"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
-      KAFKA_LOG_RETENTION_HOURS: 168  # 7 дней
-      KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    networks:
-      - djangonetwork
+  # # Kafka брокер
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.4.0
+  #   container_name: kafka
+  #   depends_on:
+  #     - zookeeper
+  #   ports:
+  #     - "9092:9092"
+  #     - "9093:9093"
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+  #     KAFKA_LOG_RETENTION_HOURS: 168  # 7 дней
+  #     KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
+  #   volumes:
+  #     - kafka-data:/var/lib/kafka/data
+  #   networks:
+  #     - djangonetwork
 
-  # GPS Tracking Service
-  gps-tracking:
-    build:
-      context: ./gps_tracking_service
-      dockerfile: Dockerfile
-    container_name: gps-tracking-service
-    depends_on:
-      - kafka
-    ports:
-      - "8001:8000"
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
-      - KAFKA_GPS_RAW_TOPIC=gps-raw-data
-      - KAFKA_VEHICLE_ALERTS_TOPIC=vehicle-alerts
-    env_file:
-      - .env.shared
-      - ./gps_tracking_service/.env
-    volumes:
-      - ./gps_tracking_service:/app
-    networks:
-      - djangonetwork
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # # GPS Tracking Service
+  # gps-tracking:
+  #   build:
+  #     context: ./gps_tracking_service
+  #     dockerfile: Dockerfile
+  #   container_name: gps-tracking-service
+  #   depends_on:
+  #     - kafka
+  #   ports:
+  #     - "8001:8000"
+  #   environment:
+  #     - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+  #     - KAFKA_GPS_RAW_TOPIC=gps-raw-data
+  #     - KAFKA_VEHICLE_ALERTS_TOPIC=vehicle-alerts
+  #   env_file:
+  #     - .env.shared
+  #     - ./gps_tracking_service/.env
+  #   volumes:
+  #     - ./gps_tracking_service:/app
+  #   networks:
+  #     - djangonetwork
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
-  # Notification Service
-  notification:
-    build:
-      context: ./notification_service
-      dockerfile: Dockerfile
-    container_name: notification-service
-    depends_on:
-      - kafka
-    ports:
-      - "8002:8000"
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
-      - KAFKA_VEHICLE_ALERTS_TOPIC=vehicle-alerts
-      - KAFKA_CONSUMER_GROUP=notification-group
-    env_file:
-      - .env.shared
-      - ./notification_service/.env
-    volumes:
-      - ./notification_service:/app
-    networks:
-      - djangonetwork
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # # Notification Service
+  # notification:
+  #   build:
+  #     context: ./notification_service
+  #     dockerfile: Dockerfile
+  #   container_name: notification-service
+  #   depends_on:
+  #     - kafka
+  #   ports:
+  #     - "8002:8000"
+  #   environment:
+  #     - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+  #     - KAFKA_VEHICLE_ALERTS_TOPIC=vehicle-alerts
+  #     - KAFKA_CONSUMER_GROUP=notification-group
+  #   env_file:
+  #     - .env.shared
+  #     - ./notification_service/.env
+  #   volumes:
+  #     - ./notification_service:/app
+  #   networks:
+  #     - djangonetwork
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
-  # Kafka UI (опционально, для отладки)
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    depends_on:
-      - kafka
-    ports:
-      - "8080:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
-    networks:
-      - djangonetwork
+  # # Kafka UI (опционально, для отладки)
+  # kafka-ui:
+  #   image: provectuslabs/kafka-ui:latest
+  #   container_name: kafka-ui
+  #   depends_on:
+  #     - kafka
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     KAFKA_CLUSTERS_0_NAME: local
+  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+  #   networks:
+  #     - djangonetwork
 
 volumes:
-  zookeeper-data:
-  zookeeper-logs:
-  kafka-data:
+  # zookeeper-data:
+  # zookeeper-logs:
+  # kafka-data:
   vehicle_accounting_pgdb:
+  vehicle_accounting:
 
 
 networks:

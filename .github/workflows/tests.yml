@@ -41,18 +41,12 @@ jobs:
           libproj-dev \
           gdal-bin \
           libgdal-dev \
-          postgis \
-          postgresql-client \
+          spatialite-bin \
+          libspatialite7 \
+          libspatialite-dev \
+          sqlite3 \
           gcc \
           gettext
-
-    - name: Cache pip packages
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
 
     - name: Install Python dependencies
       run: |
@@ -62,21 +56,9 @@ jobs:
     - name: Set up environment variables
       run: |
         echo "IS_DEBUG=True" >> $GITHUB_ENV
-        echo "PGDB_PASSWORD=postgres" >> $GITHUB_ENV
-        echo "PGDB_HOST=localhost" >> $GITHUB_ENV
-        echo "PGDB_PORT=5432" >> $GITHUB_ENV
-        echo "PGDB_USER=postgres" >> $GITHUB_ENV
-        echo "PGDB_NAME=vehicle_accounting_test" >> $GITHUB_ENV
         echo "DJANGO_SECRET_KEY=django-insecure-test-key-for-ci" >> $GITHUB_ENV
         echo "GRAPHHOPPER_API_KEY=" >> $GITHUB_ENV
         echo "GEOPIFY_API_KEY=" >> $GITHUB_ENV
-
-    - name: Wait for PostgreSQL
-      run: |
-        until pg_isready -h localhost -p 5432 -U postgres; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
 
     - name: Run migrations
       run: |
@@ -88,4 +70,4 @@ jobs:
 
     - name: Run tests
       run: |
-        python manage.py test
+        pytest --ds=vehicle_accounting.test_settings tests/

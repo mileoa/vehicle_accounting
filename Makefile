@@ -15,3 +15,6 @@ makemigrations:
 
 test:
 	uv run pytest --cov=vehicle_accounting --cov-report=html -n auto --ds=vehicle_accounting.test_settings tests/
+
+docker_run:
+	docker compose -f docker-compose.yaml --env-file .env.docker up -d 
