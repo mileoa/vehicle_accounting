@@ -1,0 +1,37 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'status']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 10m
+  receiver: 'all_chaneles'
+receivers:
+- name: 'all_chaneles'
+  telegram_configs:
+  - chat_id: 
+    bot_token: ''
+    send_resolved: true
+    parse_mode: 'Markdown'
+    message: |
+      {{ if eq .GroupLabels.alertname "DjangoHighCPU" }}
+      {{ template "telegram.django.text" . }}
+      {{ else }}
+      {{ template "telegram.default.text" . }}
+      {{ end }}
+  email_configs:
+  - to: ''
+    from: ''
+    smarthost: 'smtp.gmail.com:587'
+    auth_username: ''
+    auth_password: ''
+    headers :
+      subject: 'Vehicle accounting'
+    html: '{{ template "email.default.html" . }}'
+
+
+
+
+templates:
+- '/etc/alertmanager/templates/*.tmpl'
