@@ -1,0 +1,16 @@
+{% extends "base.html"%}
+{% load django_bootstrap5 %}
+
+{% block title %} Вход {% endblock %}
+
+{% block content %}
+<h1 class="my-4">Вход</h1>
+<form action="{% url 'accounts:login' %}" method="post">
+    {% if request.GET.next %}
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
+    {% endif %}
+    {% csrf_token %}
+    {% bootstrap_form form %}
+    {% bootstrap_button button_type="submit" content="Войти" %}
+</form>
+{% endblock %} 

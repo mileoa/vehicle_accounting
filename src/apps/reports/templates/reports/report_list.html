@@ -1,0 +1,239 @@
+{% extends "base.html"%}
+{% load django_bootstrap5 %}
+
+{% block title %}Отчеты{% endblock %}
+
+{% block content %}
+<h1 class="my-4">Отчеты</h1>
+
+{% if error %}
+<div class="alert alert-danger">
+    {{ error }}
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Общие параметры отчетов</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="start_date" class="form-label">Начальная дата</label>
+                    <input type="date" id="start_date" class="form-control" value="{{ default_start_date }}">
+                </div>
+                <div class="mb-3">
+                    <label for="end_date" class="form-label">Конечная дата</label>
+                    <input type="date" id="end_date" class="form-control" value="{{ default_end_date }}">
+                </div>
+                <div class="mb-3">
+                    <label for="period" class="form-label">Период</label>
+                    <select id="period" class="form-select">
+                        <option value="None">Выберете период</option>
+                        {% for value, label in period_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <ul class="nav nav-tabs" id="reportTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="mileage-tab" data-bs-toggle="tab" data-bs-target="#mileage-content" 
+                        type="button" role="tab" aria-controls="mileage-content" aria-selected="true">
+                    Пробег автомобиля
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-content" 
+                        type="button" role="tab" aria-controls="sales-content" aria-selected="false">
+                    Продажи автомобилей
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="driver-assignment-tab" data-bs-toggle="tab" data-bs-target="#driver-assignment-content" 
+                        type="button" role="tab" aria-controls="driver-assignment-content" aria-selected="false">
+                    Назначение водителей
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content p-3 border border-top-0 rounded-bottom" id="reportTabsContent">
+            <!-- Отчет по пробегу автомобиля -->
+            <div class="tab-pane fade show active" id="mileage-content" role="tabpanel" aria-labelledby="mileage-tab">
+                <h3>Отчет по пробегу автомобиля</h3>
+                <p>Статистика пробега автомобилей с разбивкой по выбранному периоду (дни, недели, месяцы, годы).</p>
+                
+                <form id="mileage-form" method="post" action="{% url 'reports:report_list' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="report_type" value="vehicle_mileage">
+                    <input type="hidden" name="start_date" class="start-date-input" value="{{ default_start_date }}">
+                    <input type="hidden" name="end_date" class="end-date-input" value="{{ default_end_date }}">
+                    <input type="hidden" name="period" class="period-input" value="None">
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="mileage_filter_type" id="filter_vehicle" value="vehicle" checked>
+                        <label class="form-check-label" for="filter_vehicle">
+                            По отдельному автомобилю
+                        </label>
+                    </div>
+                    
+                    <div class="mb-3 vehicle-selector">
+                        <label for="vehicle_id" class="form-label">Автомобиль</label>
+                        <select name="vehicle_id" id="vehicle_id" class="form-select">
+                            <option value="">Выберите автомобиль...</option>
+                            {% for vehicle in vehicles %}
+                            <option value="{{ vehicle.id }}">{{ vehicle.car_number }} ({{ vehicle.brand }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="mileage_filter_type" id="filter_enterprise" value="enterprise">
+                        <label class="form-check-label" for="filter_enterprise">
+                            По предприятию
+                        </label>
+                    </div>
+                    
+                    <div class="mb-3 enterprise-selector" style="display: none;">
+                        <label for="mileage_enterprise_id" class="form-label">Предприятие</label>
+                        <select name="mileage_enterprise_id" id="mileage_enterprise_id" class="form-select">
+                            <option value="">Выберите предприятие...</option>
+                            {% for enterprise in enterprises %}
+                            <option value="{{ enterprise.id }}">{{ enterprise.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Сформировать отчет</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Отчет по продажам автомобилей -->
+            <div class="tab-pane fade" id="sales-content" role="tabpanel" aria-labelledby="sales-tab">
+                <h3>Отчет по продажам автомобилей</h3>
+                <p>Статистика продаж автомобилей: количество, стоимость, распределение по маркам и предприятиям.</p>
+                
+                <form id="sales-form" method="post" action="{% url 'reports:report_list' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="report_type" value="vehicle_sales">
+                    <input type="hidden" name="start_date" class="start-date-input" value="{{ default_start_date }}">
+                    <input type="hidden" name="end_date" class="end-date-input" value="{{ default_end_date }}">
+                    <input type="hidden" name="period" class="period-input">
+                    
+                    <div class="mb-3">
+                        <label for="brand_id" class="form-label">Марка автомобиля</label>
+                        <select name="brand_id" id="brand_id" class="form-select">
+                            <option value="">Все марки</option>
+                            {% for brand in brands %}
+                            <option value="{{ brand.id }}">{{ brand.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="sales_enterprise_id" class="form-label">Предприятие</label>
+                        <select name="sales_enterprise_id" id="sales_enterprise_id" class="form-select">
+                            <option value="">Все предприятия</option>
+                            {% for enterprise in enterprises %}
+                            <option value="{{ enterprise.id }}">{{ enterprise.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Сформировать отчет</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Отчет о назначении водителей -->
+            <div class="tab-pane fade" id="driver-assignment-content" role="tabpanel" aria-labelledby="driver-assignment-tab">
+                <h3>Отчет о назначении водителей</h3>
+                <p>Статистика по активным и неактивным водителям, соотношение водителей и автомобилей, история назначений.</p>
+                
+                <form id="driver-assignment-form" method="post" action="{% url 'reports:report_list' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="report_type" value="driver_assignment">
+                    <input type="hidden" name="start_date" class="start-date-input" value="{{ default_start_date }}">
+                    <input type="hidden" name="end_date" class="end-date-input" value="{{ default_end_date }}">
+                    <input type="hidden" name="period" class="period-input">
+                    
+                    <div class="mb-3">
+                        <label for="driver_assignment_enterprise_id" class="form-label">Предприятие</label>
+                        <select name="enterprise_id" id="driver_assignment_enterprise_id" class="form-select" multiple>
+                            {% for enterprise in enterprises %}
+                            <option value="{{ enterprise.id }}">{{ enterprise.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Сформировать отчет</button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize date and period inputs
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    const periodInput = document.getElementById('period');
+    
+    // Handle filter type selection (vehicle/enterprise)
+    const vehicleFilterRadios = document.querySelectorAll('input[name="mileage_filter_type"]');
+    const vehicleSelector = document.querySelector('.vehicle-selector');
+    const enterpriseSelector = document.querySelector('.enterprise-selector');
+    
+    vehicleFilterRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'vehicle') {
+                vehicleSelector.style.display = 'block';
+                enterpriseSelector.style.display = 'none';
+            } else {
+                vehicleSelector.style.display = 'none';
+                enterpriseSelector.style.display = 'block';
+            }
+        });
+    });
+    
+    // Synchronize date and period inputs across forms
+    function syncInputsToForms() {
+        const startDateValue = startDateInput.value;
+        const endDateValue = endDateInput.value;
+        const periodValue = periodInput.value;
+        
+        document.querySelectorAll('.start-date-input').forEach(input => {
+            input.value = startDateValue;
+        });
+        
+        document.querySelectorAll('.end-date-input').forEach(input => {
+            input.value = endDateValue;
+        });
+        
+        document.querySelectorAll('.period-input').forEach(input => {
+            input.value = periodValue;
+        });
+    }
+    
+    // Listen for changes to date and period inputs
+    startDateInput.addEventListener('change', syncInputsToForms);
+    endDateInput.addEventListener('change', syncInputsToForms);
+    periodInput.addEventListener('change', syncInputsToForms);
+    
+    // Set initial values
+    syncInputsToForms();
+});
+</script>
+{% endblock %}

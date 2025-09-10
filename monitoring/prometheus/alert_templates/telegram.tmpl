@@ -1,0 +1,32 @@
+{{ define "telegram.django.text" }}
+{{ range .Alerts }}
+🔥 *ВЫСОКАЯ НАГРУЗКА CPU*
+
+📊 Текущая загрузка: {{ with .Annotations.cpu_usage }}{{ . }}%{{ else }}> 80%{{ end }}
+⏰ *Время:* {{ .StartsAt.Format "15:04:05 02.01.2006" }}
+
+{{- if eq .Status "resolved" }}
+✅ *Проблема решена!*
+{{- else }}
+🚨 *Проблема актуальна!*
+{{- end }}
+
+{{ end }}
+{{ end }}
+
+{{ define "telegram.default.text" }}
+{{ range .Alerts }}
+🚨 *{{ .Annotations.summary }}*
+
+📋 {{ .Annotations.description }}
+
+⏰ *Время:* {{ .StartsAt.Format "15:04:05 02.01.2006" }}
+
+{{- if eq .Status "resolved" }}
+✅ *Проблема решена!*
+{{- else }}
+🚨 *Проблема актуальна!*
+{{- end }}
+
+{{ end }}
+{{ end }}

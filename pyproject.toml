@@ -1,52 +1,54 @@
-[project]
+[tool.poetry]
 name = "vehicle-accounting"
 version = "0.1.0"
-description = "Add your description here"
+description = ""
+authors = ["mileoa <ezkimozzzzz@gmail.com>"]
+license = "MIT"
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-    "django>=5.1.5",
-    "djangorestframework-simplejwt>=5.4.0",
-    "djangorestframework>=3.15.2",
-    "psycopg2-binary>=2.9.10",
-    "python-dotenv>=1.0.1",
-    "faker>=36.1.1",
-    "django-bootstrap5>=24.3",
-    "pytz>=2025.1",
-    "djangorestframework-gis>=1.1",
-    "requests>=2.32.3",
-    "django-extensions>=3.2.3",
-    "folium>=0.19.5",
-    "django-import-export>=4.3.7",
-    "django-admin-rangefilter>=0.13.2",
-    "gpxpy>=1.6.2",
-    "uwsgi>=2.0.29",
-    "python-telegram-bot>=22.1",
-    "aiohttp>=3.11.18",
-    "django-debug-toolbar>=5.2.0",
-    "pymemcache>=4.0.0",
-    "channels>=4.2.2",
-    "rx>=3.2.0",
-    "daphne>=4.2.0",
-    "gunicorn>=23.0.0",
-    "gevent>=25.5.1",
-    "psycopg[pool]>=3.2.9",
-    "django-model-utils>=5.0.0",
-    "kafka-python>=2.2.15",
-    "pytest>=8.4.1",
-    "pytest-django>=4.11.1",
-    "pytest-cov>=6.2.1",
-    "pytest-xdist>=3.8.0",
-    "pytest-mock>=3.14.1",
-    "pytest-factoryboy>=2.8.1",
-    "factory-boy>=3.3.3",
-]
 
-[tool.uv.sources]
-djangorestframework = { git = "https://github.com/encode/django-rest-framework" }
+[tool.poetry.dependencies]
+python = "^3.12"
+django = "^5.2.4"
+psycopg = {extras = ["binary", "pool"], version = "^3.1.0"}
+python-dotenv = "^1.1.1"
+gpxpy = "^1.6.2"
+djangorestframework = "^3.16.0"
+django-import-export = "^4.3.8"
+djangorestframework-gis = "^1.2.0"
+djangorestframework-simplejwt = "^5.5.0"
+django-bootstrap5 = "^25.1"
+pytz = "^2025.2"
+folium = "^0.20.0"
+requests = "^2.32.4"
+django-rest-swagger = "^2.2.0"
+drf-yasg = "^1.21.10"
+kafka-python = "^2.2.15"
+rx = "^3.2.0"
+channels = "^4.3.1"
+daphne = "^4.2.1"
+gunicorn = "^23.0.0"
+gevent = "^25.5.1"
+django-prometheus = "^2.4.1"
+pymemcache = "^4.0.0"
 
-[dependency-groups]
-dev = [
-    "pytest>=8.4.1",
-]
 
+[tool.poetry.group.dev.dependencies]
+pylint-django = "^2.6.1"
+faker = "^37.5.3"
+locust = "^2.39.0"
+pytest = "^8.4.1"
+spatialite = "^0.0.3"
+pytest-cov = "^6.2.1"
+pytest-xdist = "^3.8.0"
+pytest-django = "^4.11.1"
+factory-boy = "^3.3.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "src.core.settings.test"
+python_paths = ["src"]
+addopts = "--tb=short --strict-markers"
+testpaths = ["integration_tests"]

@@ -1,0 +1,34 @@
+"groups":
+- "name": "django"
+  "rules":
+  - "alert": "DjangoHighHttp4xxErrorRate"
+    "annotations":
+      "description": "Более 5% HTTP запросов со статусом 4xx за последние 5 минут для {{ $labels.view }}."
+      "summary": "Высокое количество HTTP 4xx."
+    "expr": |
+      sum(
+        rate(
+          django_http_responses_total_by_status_view_method_total{
+            job=~"django_app",
+            status=~"^4.*",
+            view!~"<unnamed view>|health_check:health_check_home|prometheus-django-metrics"
+          }[1m]
+        )
+      )  by (cluster, namespace, job, view)
+      /
+      sum(
+        rate(
+          django_http_responses_total_by_status_view_method_total{
+            job=~"django_app",
+            view!~"<unnamed view>|health_check:health_check_home|prometheus-django-metrics"
+          }[1m]
+        )
+      )  by (cluster, namespace, job, view)
+      * 100 > 5
+    "for": "1m"
+  - "alert": "test"
+    "annotations":
+      "description": "Более 5% HTTP запросов со статусом 4xx за последние 5 минут для {{ $labels.view }}."
+      "summary": "Высокое количество HTTP 4xx."
+    "expr": vector(1)
+    "for": "0s"

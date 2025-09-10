@@ -1,0 +1,28 @@
+<form method="get" action="{% url 'tracking:trips_export' vehicle.id %}">
+    {% csrf_token %}
+    <p class="fw-bold">Экспорт поездок</p>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="start_date" class="form-label">Начальная дата</label>
+            <input type="date" name="start_date" id="start_date" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+            <label for="end_date" class="form-label">Конечная дата</label>
+            <input type="date" name="end_date" id="end_date" class="form-control" required>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="export_format" class="form-label">Формат экспорта</label>
+            <select name="export_format" id="export_format" class="form-select" required>
+                <option value="csv">CSV</option>
+                <option value="json">JSON</option>
+            </select>
+        </div>
+    </div>
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-download"></i> Экспортировать поездки
+        </button>
+    </div>
+</form>

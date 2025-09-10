@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "gps-service"
+version = "0.1.0"
+description = ""
+authors = ["mileoa <ezkimozzzzz@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+aiokafka = "^0.12.0"
+fastapi = "^0.116.1"
+pydantic = "^2.11.7"
+uvicorn = "^0.35.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

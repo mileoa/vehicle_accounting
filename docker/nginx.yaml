@@ -1,0 +1,18 @@
+services:
+  nginx:
+    build:
+      context: ..
+      dockerfile: ./docker/nginx.Dockerfile
+    volumes:
+      - ../src/static:/static
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_logs:/var/log/nginx
+    ports:
+      - "8081:80"
+      - "8001:8001"
+    depends_on:
+      - vehicle-accounting
+    restart: always
+
+volumes:
+  nginx_logs:

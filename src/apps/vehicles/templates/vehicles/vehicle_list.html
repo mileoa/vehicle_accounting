@@ -1,0 +1,187 @@
+{% extends "base.html"%}
+{% load django_bootstrap5 %}
+{% load static %}
+
+{% block title %}Автомобили{% endblock %}
+{% block head_additional%}
+<style>
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .status-text {
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .status-change-animation {
+        animation: statusPulse 0.5s ease-in-out;
+    }
+    
+    .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        background-color: #6c757d; /* цвет по умолчанию */
+    }
+
+    @keyframes statusPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<h1 class="my-4">Автомобили {% if enterprise_name %}предприятия {{ enterprise_name }}{% endif %}</h1>
+<div class="d-flex justify-content-between mb-3">
+    <div>
+        <a class="btn btn-primary" href="{% url 'vehicles:create' %}">Создать машину</a>
+        <a class="btn btn-primary" href="{% url 'vehicles:import' %}">
+            <i class="fas fa-upload"></i> Импорт машин
+        </a>
+    </div>
+    <div>
+        <a class="btn btn-success" href="{% url 'vehicles:export' %}{% if request.GET.enterprise_id %}?enterprise_id={{ request.GET.enterprise_id }}{% endif %}">Экспорт CSV</a>
+        <a class="btn btn-success" href="{% url 'vehicles:export' %}?export_format=json{% if request.GET.enterprise_id %}&enterprise_id={{ request.GET.enterprise_id }}{% endif %}">Экспорт JSON</a>
+    </div>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+          <th>Статус</th>
+          <th>Цена</th>
+          <th>Год производства</th>
+          <th>Пробег</th>
+          <th>Описание</th>
+          <th>Номер машины</th>
+          <th>Бренд</th>
+          <th>Предприятие</th>
+          <th>Время покупки</th>
+          <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for vehicle in vehicles %}
+        <tr data-vehicle-id="{{ vehicle.id }}">
+            <td>
+                <span class="status-indicator" id="status-{{ vehicle.id }}">
+                    <i class="fas status-dot" style="color: #6c757d;"></i>
+                    <span class="status-text">Загрузка...</span>
+                </span>
+            </td>
+            <td>{{ vehicle.price }}</td>
+            <td>{{ vehicle.year_of_manufacture }}</td>
+            <td>{{ vehicle.mileage }}</td>
+            <td>{{ vehicle.description }}</td>
+            <td>{{ vehicle.car_number }}</td>
+            <td>{{ vehicle.brand.name }}</td>
+            <td>{{ vehicle.enterprise.name }}</td>
+            <td>
+                {% if vehicle.purchase_datetime %}
+                <span class="datetime-field" data-datetime-obj="{{ vehicle.purchase_datetime|date:'c' }}"></span>
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'vehicles:detail' pk=vehicle.id%}">Информация</a>
+                <br>
+                <a href="{% url 'vehicles:update' pk=vehicle.id%}">Изменить</a>
+                <br>
+                <a href="{% url 'vehicles:delete' pk=vehicle.id%}">Удалить</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% include "pagination.html" with page=page_obj %}
+
+
+
+<script>
+    class VehicleStatusUpdater {
+        constructor() {
+            this.ws = null;
+            this.connectWebSocket();
+        }
+        
+        connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//localhost:8081/ws/vehicle-status/`;
+            
+            try {
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    console.log('Vehicle status WebSocket connected');
+                };
+                
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleMessage(message);
+                };
+                
+                this.ws.onclose = () => {
+                    console.log('Vehicle status WebSocket disconnected');
+                };
+                
+            } catch (error) {
+                console.error('Failed to create WebSocket:', error);
+                setTimeout(() => this.connectWebSocket(), 3000);
+            }
+        }
+        
+        handleMessage(message) {
+            if (message.type === 'initial_statuses') {
+                Object.entries(message.statuses).forEach(([vehicleId, statusInfo]) => {
+                    this.updateVehicleStatus(vehicleId, statusInfo, false);
+                });
+            } else if (message.type === 'status_update') {
+                this.updateVehicleStatus(message.vehicle_id, message.status_info, true);
+            }
+        }
+        
+        updateVehicleStatus(vehicleId, statusInfo, animate = false) {
+            const statusElement = document.getElementById(`status-${vehicleId}`);
+            if (!statusElement) return;
+            
+            const dot = statusElement.querySelector('.status-dot');
+            const text = statusElement.querySelector('.status-text');
+            
+            if (dot && text) {
+                dot.style.backgroundColor = statusInfo.color;
+                text.textContent = statusInfo.text;
+                
+                // Добавляем тултип с дополнительной информацией
+                if (statusInfo.minutes_ago !== null) {
+                    statusElement.title = `Последняя активность: ${statusInfo.minutes_ago} мин. назад`;
+                } else {
+                    statusElement.title = 'Нет данных о местоположении';
+                }
+                
+                // Анимация при изменении
+                if (animate) {
+                    statusElement.classList.add('status-change-animation');
+                    setTimeout(() => {
+                        statusElement.classList.remove('status-change-animation');
+                    }, 500);
+                }
+            }
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        new VehicleStatusUpdater();
+    });
+</script>
+
+<script src="{% static 'js/formatDatetime.js' %}"></script>
+{% endblock %}

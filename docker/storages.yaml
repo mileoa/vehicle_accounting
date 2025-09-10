@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: postgis/postgis:17-3.5-alpine 	
+    container_name: example-db
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT}:${POSTGRES_INTERNAL_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ../src/.env
+
+volumes:
+  postgres_data:

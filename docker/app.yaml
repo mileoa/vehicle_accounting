@@ -1,0 +1,16 @@
+services:
+  vehicle-accounting:
+    build:
+      context: ..
+      dockerfile: ./docker/app.Dockerfile
+    command: >
+      sh -c " python manage.py collectstatic --no-input & gunicorn --reload core.wsgi:application --workers 4 --worker-class gevent --bind 0.0.0.0:8000 & python manage.py migrate & daphne core.asgi:application --bind 0.0.0.0 --port 8082 & python ./apps/tracking/consumers/gps_consumer.py"
+
+    container_name: vehicle-accounting
+    env_file:
+      - ../src/.env
+    depends_on:
+      - postgres
+    volumes:
+      - ../src/:/app/
+    restart: always
