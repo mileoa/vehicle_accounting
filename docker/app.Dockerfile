@@ -1,4 +1,4 @@
-FROM python:3.12.1
+FROM python:3.11
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     gcc \
     && rm -rf /var/lib/apt/lists/*
-
+    
 ADD pyproject.toml /app
 
 RUN pip install --no-cache-dir --upgrade pip

@@ -6,10 +6,7 @@ services:
     depends_on:
       - kafka
     volumes:
-      - ../gps_service/pyproject.toml:/app/pyproject.toml:ro
-      - ../gps_service/poetry.lock:/app/poetry.lock:ro
       - ../gps_service/src/:/app/
-
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     restart: always

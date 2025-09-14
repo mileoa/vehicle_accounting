@@ -2,13 +2,15 @@ FROM python:3.12.1-slim
 
 WORKDIR /app
 
+COPY ./gps_service/pyproject.toml /app/
+
 RUN pip install --upgrade pip
 RUN pip install poetry
 
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-root --no-interaction --no-ansi
 
-COPY ../gps_service/src/ .
+COPY ./gps_service/src/ /app/
 
 EXPOSE 8000
 
