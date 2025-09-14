@@ -56,6 +56,8 @@ class IndexVehicleView(
     http_method_names = ["get"]
     context_object_name = "vehicles"
     template_name = "vehicles/vehicle_list.html"
+    ordering_fields = ["id"]
+    ordering = ["id"]
     paginate_by = 100
     permission_required = ["vehicles.view_vehicle"]
 
@@ -248,7 +250,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
     ordering_fields = ["id", "price", "created_at"]
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
 
@@ -259,12 +261,14 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_superuser:
-            return Vehicle.objects.all()
+            return Vehicle.objects.all().order_by("id")
         manager = Manager.objects.get(user=self.request.user)
-        return Vehicle.objects.filter(enterprise__in=manager.enterprises.all())
+        return Vehicle.objects.filter(
+            enterprise__in=manager.enterprises.all()
+        ).order_by("id")
 
     def get_all(self):
-        return Vehicle.objects.all()
+        return Vehicle.objects.all().order_by("id")
 
     def get_object(self):
         obj = get_object_or_404(self.get_all(), pk=self.kwargs["pk"])
@@ -320,12 +324,13 @@ class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
     pagination_class = PageNumberPagination
+    ordering_fields = ["id"]
     page_size = 5
     page_size_query_param = "page_size"
     max_page_size = 100
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
     paginate_by = 25
@@ -335,17 +340,22 @@ class BrandViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
+    def get_queryset(self):
+        return super().get_queryset().order_by("id")
+
 
 class DriverViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer]
     serializer_class = DriverSerializer
     pagination_class = PageNumberPagination
+    ordering_fields = ["id"]
+    ordering = ["id"]
     page_size = 5
     page_size_query_param = "page_size"
     max_page_size = 100
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
     paginate_by = 25
@@ -357,12 +367,14 @@ class DriverViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_superuser:
-            return Driver.objects.all()
+            return Driver.objects.all().order_by("id")
         manager = Manager.objects.get(user=self.request.user)
-        return Driver.objects.filter(enterprise__in=manager.enterprises.all())
+        return Driver.objects.filter(
+            enterprise__in=manager.enterprises.all()
+        ).order_by("id")
 
     def get_all(self):
-        return Vehicle.objects.all()
+        return Vehicle.objects.all().order_by("id")
 
     def get_object(self):
         obj = get_object_or_404(self.get_all(), pk=self.kwargs["pk"])
@@ -377,12 +389,13 @@ class ActiveVehicleDriverViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer]
     serializer_class = ActiveVehicleDriverSerializer
     pagination_class = PageNumberPagination
+    ordering_fields = ["id"]
     page_size = 5
     page_size_query_param = "page_size"
     max_page_size = 100
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
 
@@ -541,7 +554,7 @@ class ImportVehicleView(ImportView):
 class VehicleMillageViewSet(viewsets.ViewSet):
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
     ]
 
     def get_queryset(self):

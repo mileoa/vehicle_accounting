@@ -13,6 +13,9 @@ class Command(BaseCommand):
         # Создаем группы
         managers_group, created = Group.objects.get_or_create(name="managers")
 
+        if not created:
+            return
+
         vehicles = Vehicle
         content_type = ContentType.objects.get_for_model(vehicles)
         view_vehicle = Permission.objects.get(

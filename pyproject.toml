@@ -46,9 +46,3 @@ factory-boy = "^3.3.3"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "src.core.settings.test"
-python_paths = ["src"]
-addopts = "--tb=short --strict-markers"
-testpaths = ["integration_tests"]

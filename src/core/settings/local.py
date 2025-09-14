@@ -8,5 +8,6 @@ ALLOWED_HOSTS.extend(
         "0.0.0.0",
         "vehicle-accounting",
         "host.docker.internal",
+        "testserver",
     ]
 )

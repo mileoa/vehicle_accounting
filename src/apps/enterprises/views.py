@@ -27,12 +27,13 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer]
     serializer_class = EnterpriseSerializer
     pagination_class = PageNumberPagination
+    ordering_fields = ["id"]
     page_size = 5
     page_size_query_param = "page_size"
     max_page_size = 100
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
         DjangoModelPermissions,
     ]
     paginate_by = 25
@@ -44,12 +45,14 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_superuser:
-            return Enterprise.objects.all()
+            return Enterprise.objects.all().order_by("id")
         manager = Manager.objects.get(user=self.request.user)
-        return Enterprise.objects.filter(id__in=manager.enterprises.all())
+        return Enterprise.objects.filter(
+            id__in=manager.enterprises.all()
+        ).order_by("id")
 
     def get_all(self):
-        return Enterprise.objects.all()
+        return Enterprise.objects.all().order_by("id")
 
     def get_object(self):
         obj = get_object_or_404(self.get_all(), pk=self.kwargs["pk"])
@@ -65,6 +68,7 @@ class IndexEnterpisesView(WebEnterpriseMixin, ListView):
     context_object_name = "enterprises"
     template_name = "enterprises/enterprise_list.html"
     paginate_by = 100
+    ordering = ["id"]
     permission_required = ["enterprises.view_enterprise"]
 
     def get_queryset(self):

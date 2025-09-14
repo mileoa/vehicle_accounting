@@ -174,7 +174,7 @@ class VehicleGPSPointViewSet(viewsets.ViewSet):
 
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
     ]
 
     def list(self, request):
@@ -229,7 +229,7 @@ class TripViewSet(viewsets.ModelViewSet):
     serializer_class = TripSerializer
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
     ]
 
     def get_queryset(self):
@@ -256,7 +256,7 @@ class TripGPSPointViewSet(viewsets.ViewSet):
 
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
     ]
 
     @swagger_auto_schema(
@@ -426,7 +426,7 @@ class TripGPSPointViewSet(viewsets.ViewSet):
 class TripListViewSet(viewsets.ViewSet):
     permission_classes = [
         IsAuthenticated,
-        HasRoleOrSuper("managers"),
+        HasRoleOrSuper("manager"),
     ]
 
     def list(self, request):

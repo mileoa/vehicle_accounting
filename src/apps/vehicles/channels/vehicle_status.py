@@ -65,7 +65,6 @@ class VehicleStatusTracker:
             )
             statuses[vehicle.id] = status_info
 
-        print(statuses)
         return statuses
 
     def _determine_vehicle_status(self, vehicle, latest_gps, current_time):
