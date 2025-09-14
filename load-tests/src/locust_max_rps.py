@@ -305,7 +305,7 @@ class WebInterfaceUser(FastHttpUser):
                     csrf_token = csrf_match.group(1)
 
             # Данные для авторизации
-            login_data = {"username": "mileoa", "password": "0Vemny1v1"}
+            login_data = {"username": "mileoa", "password": "qwer1234"}
 
             if csrf_token:
                 login_data["csrfmiddlewaretoken"] = csrf_token
