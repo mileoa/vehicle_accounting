@@ -52,7 +52,7 @@ app-logs:
 
 .PHONY: app-down
 app-down:
-	${DC} -f ${APP_FILE} -f ${STORAGES_FILE} ${ENV} down 
+	${DC} -f ${APP_FILE} -f ${STORAGES_FILE} -f ${TELEGRAM_FILE} -f ${KAFKA_FILE} -f ${GPS_SERVICE_FILE} -f ${NGINX_FILE} -f ${MONITORING_FILE} ${ENV} down 
 
 .PHONY: makemigrations
 makemigrations:
